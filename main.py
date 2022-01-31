@@ -1,6 +1,6 @@
 import pykep as pk
 import pygmo as pg
-from chemical_propulsion import _tandem_udp
+from chemical_propulsion import titan_chemical_udp
 
 
 def spice_kernels():
@@ -30,11 +30,42 @@ def spice_kernels():
     print("Imported SPICE kernels!")
 
 
-def run_tandem():
-    # seq = [jpl_lp('earth'), jpl_lp('venus'), jpl_lp('earth')]
-    udp = _tandem_udp(prob_id=12)
+def find_all_combinations(stuff):
+    import itertools
+
+    combs = []
+    for L in range(0, len(stuff) + 1):
+        for subset in itertools.combinations(stuff, L):
+            combs.append(subset)
+
+    return combs
+
+
+def run_titan_archi():
+    # Redefining the planets as to change their safe radius
+    earth = pk.planet.spice('EARTH BARYCENTER', 'SUN', 'ECLIPJ2000', 'NONE', pk.MU_SUN, pk.MU_EARTH,
+                            pk.EARTH_RADIUS, pk.EARTH_RADIUS * 1.05)
+
+    venus = pk.planet.spice('VENUS BARYCENTER', 'SUN', 'ECLIPJ2000', 'NONE', pk.MU_SUN, 100, 100, 100)
+    venus.safe_radius = 1.05
+
+    mars = pk.planet.spice('MARS BARYCENTER', 'SUN', 'ECLIPJ2000', 'NONE', pk.MU_SUN, 100, 100, 100)
+    mars.safe_radius = 1.05
+
+    jupiter = pk.planet.spice('JUPITER BARYCENTER', 'SUN', 'ECLIPJ2000', 'NONE', pk.MU_SUN, 100, 100, 100)
+    jupiter.safe_radius = 1.7
+
+    saturn = pk.planet.spice('SATURN BARYCENTER', 'SUN', 'ECLIPJ2000', 'NONE', pk.MU_SUN, 100, 100, 100)
+    saturn.safe_radius = 1.5
+
+    titan = pk.planet.spice('TITAN', 'SUN', 'ECLIPJ2000', 'NONE', pk.MU_SUN, 100, 100, 100)
+
+
+
+    udp = titan_chemical_udp(prob_id=12, constrained=False)
 
     prob = pg.problem(udp)
+    prob.c_tol = 1e-4
     # We solve it!!
     uda = pg.sade(gen=100)
     islands = 8
@@ -53,5 +84,9 @@ def run_tandem():
 
 
 if __name__ == "__main__":
+    # Checks to make sure the spice kernels have been imported
     spice_kernels()
-    run_tandem()
+
+    # Going to create a list of functions that
+
+    run_titan_archi()

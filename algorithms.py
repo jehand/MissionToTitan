@@ -33,6 +33,8 @@ class Algorithms:
         sols2 = [item[0] for item in sols]
         idx = sols2.index(min(sols2))
         print("Done!! Solutions found are: ", algo.get_champions_f())
+    
+        return algo.get_champions_x()[idx]
         self.problem.pretty(algo.get_champions_x()[idx])
         axis = self.problem.plot(algo.get_champions_x()[idx])
         axis.legend(fontsize=6)
@@ -51,7 +53,7 @@ class Algorithms:
         print(
             "Running a Self-Adaptive Differential Evolution Algorithm .... on {} parallel islands".format(islands))
 
-        self.solve(archi)
+        return self.solve(archi)
 
     def func_names(self):
         """

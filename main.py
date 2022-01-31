@@ -73,7 +73,10 @@ def run_titan_archi():
 
     # We solve it!!
     sol = Algorithms(problem=udp)
-    sol.self_adaptive_differential_algorithm()
+    champion = sol.self_adaptive_differential_algorithm()
+    udp.pretty(champion)
+    axis = udp.plot(champion)
+    axis.legend(fontsize=6)
 
 
 if __name__ == "__main__":

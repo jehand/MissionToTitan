@@ -8,14 +8,14 @@ def spice_kernels():
     # Downloading the spice kernel
     import os.path
 
-    if not os.path.exists("sat427.bsp") or not os.path.exists("de432s.bsp"):
+    if not os.path.exists("sat441.bsp") or not os.path.exists("de432s.bsp"):
         import requests
 
-        url = "https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/satellites/sat427.bsp"
+        url = "https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/satellites/sat441.bsp"
         r = requests.get(url, allow_redirects=True)
-        open('sat427.bsp', 'wb').write(r.content)
+        open('sat441.bsp', 'wb').write(r.content)
 
-        print("Downloaded sat427.bsp!")
+        print("Downloaded sat441.bsp!")
 
         url2 = "https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/de432s.bsp"
         r2 = requests.get(url2, allow_redirects=True)
@@ -26,7 +26,7 @@ def spice_kernels():
     else:
         print("File is already downloaded!")
 
-    pk.util.load_spice_kernel("sat427.bsp")
+    pk.util.load_spice_kernel("sat441.bsp")
     pk.util.load_spice_kernel("de432s.bsp")
     print("Imported SPICE kernels!")
 

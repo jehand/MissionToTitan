@@ -2,6 +2,7 @@ import pykep as pk
 import pygmo as pg
 from chemical_propulsion import TitanChemicalUDP
 from algorithms import Algorithms
+import csv
 
 
 def spice_kernels():

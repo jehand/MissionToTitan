@@ -23,7 +23,7 @@ class TitanChemicalUDP(mga_1dsm):
        5) Remove the time constraint
     """
 
-    def __init__(self, sequence=1, constrained=True):
+    def __init__(self, sequence, constrained=True):
         """
         The Titan problem of the trajectory gym consists in 48 different instances varying in fly-by sequence and
         the presence of a time constraint.

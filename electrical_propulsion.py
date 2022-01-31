@@ -1,5 +1,5 @@
 import pykep as pk
-from pykep.trajopt import lt_margo, launchers
+from pykep.trajopt import lt_margo, mr_lt_nep, launchers
 from pykep.planet import jpl_lp
 from pykep import epoch_from_string
 from algorithms import Algorithms
@@ -11,7 +11,9 @@ from math import log, acos, cos, sin, asin, exp
 # Going to try a lt_margo implementation (idea being that the low thrust model would be used to reach Mars, and then from there 
 # chemical would be used, therefore we do not need to model the initial trajectory as a MGA?)
 
-class ElectricalPropulsion(lt_margo):
+# Could add a launcher model to not need an initial mass, just have the model calculate the initial mass
+
+class P2PElectricalPropulsion(lt_margo):
     """
     This class represents a rendezvous mission to a nearby planet modelled with electrical propulsion (can be 
     solar or nuclear as determined by the user). For solar, the power is calculated to decay with distance from 
@@ -29,7 +31,7 @@ class ElectricalPropulsion(lt_margo):
         """
         Defining the problem and allowing the user to input most of the parameters
 
-        Args: #Needs editing
+        Args:
             - destination (``pykep.planet``): The target planet for the trajectory.
             - departure_time (``array(str, str)``): The window within which the launch may happen.
             - initial_mass (``float``): The initial mass of the spacecraft.
@@ -52,69 +54,21 @@ class ElectricalPropulsion(lt_margo):
             start="earth"
         )
 
-
-    # def fitness(self, x):
-    #     T, Vinfx, Vinfy, Vinfz = self._decode_times_and_vinf(x)
-    #     # We transform it (only the needed component) to an equatorial system rotating along x
-    #     # (this is an approximation, assuming vernal equinox is roughly x and the ecliptic plane is roughly xy)
-    #     earth_axis_inclination = 0.409072975
-    #     # This is different from the GTOP tanmEM problem, I think it was bugged there as the rotation was in the wrong direction.
-    #     Vinfz = - Vinfy * sin(earth_axis_inclination) + Vinfz * cos(earth_axis_inclination)
-    #     # And we find the vinf declination (in degrees)
-    #     sindelta = Vinfz / x[3]
-    #     declination = asin(sindelta) / np.pi * 180.
-    #     # We now have the initial mass of the spacecraft
-    #     m_initial = launchers.atlas501(x[3] / 1000., declination) # Need to change the launcher model being used parametrically
-    #     # And we can evaluate the final mass via Tsiolkowsky
-    #     Isp = 312.
-    #     g0 = 9.80665
-    #     DV = super().fitness(x)[0]
-    #     DV = DV + 165.  # losses for 3 swgbys + insertion
-    #     m_final = m_initial * exp(-DV / Isp / g0)
-    #     # Numerical guard for the exponential
-    #     if m_final == 0:
-    #         m_final = 1e-320
-    #     if self.constrained:
-    #         retval = [-log(m_final), sum(T) - 3652.5]
-    #     else:
-    #         retval = [-log(m_final), ]
-    #     return retval
-
-    # def pretty(self, x):
-    #     """
-    #     prob.plot(x)
-
-    #     - x: encoded trajectory
-
-    #     Prints human readable information on the trajectory represented by the decision vector x
-
-    #     Example::
-
-    #       print(prob.pretty(x))
-    #     """
-    #     super().pretty(x)
-    #     T, Vinfx, Vinfy, Vinfz = self._decode_times_and_vinf(x)
-    #     # We transform it (only the needed component) to an equatorial system rotating along x
-    #     # (this is an approximation, assuming vernal equinox is roughly x and the ecliptic plane is roughly xy)
-    #     earth_axis_inclination = 0.409072975
-    #     Vinfz = - Vinfy * sin(earth_axis_inclination) + Vinfz * cos(earth_axis_inclination)
-    #     # And we find the vinf declination (in degrees)
-    #     sindelta = Vinfz / x[3]
-    #     declination = asin(sindelta) / np.pi * 180.
-    #     m_initial = launchers.soyuzf(x[3] / 1000., declination)
-    #     # And we can evaluate the final mass via Tsiolkowsky
-    #     Isp = 312.
-    #     g0 = 9.80665
-    #     DV = super().fitness(x)[0]
-    #     DV = DV + 165.  # losses for 3 swgbys + insertion
-    #     m_final = m_initial * exp(-DV / Isp / g0)
-    #     print("\nInitial mass:", m_initial)
-    #     print("Final mass:", m_final)
-    #     print("Declination:", declination)
-
     def __repr__(self):
         return "AEON low thrust trajectory optimization from Earth to another planet"
 
+class MGAElectricalPropulsion(mr_lt_nep):
+    """
+    This class uses a multiple rendezvous (MR) approach to reach Titan modelled with electrical propulsion (meant to be solar). 
+    For solar, the power is calculated to decay with distance from the sun (not including impacting objects that might get in the way). 
+    The trajectory is modelled using the Sims-Flanagan model.
+
+    .. note::
+
+       The idea is to use a MR approach and set the time at each planet to be minimal so that .
+    """
+    def __init__(self):
+        pass
 
 if __name__ == "__main__":
     pk.util.load_spice_kernel("sat427.bsp")
@@ -122,7 +76,7 @@ if __name__ == "__main__":
     mars = pk.planet.spice('MARS BARYCENTER', 'SUN', 'ECLIPJ2000', 'NONE', pk.MU_SUN, 100, 100, 100)
     mars.safe_radius = 1.05
     
-    udp = ElectricalPropulsion(mars)
+    udp = P2PElectricalPropulsion(mars)
     sol = Algorithms(problem=udp)
     champion = sol.self_adaptive_differential_algorithm()
     udp.pretty(champion)

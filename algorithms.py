@@ -35,9 +35,6 @@ class Algorithms:
         print("Done!! Solutions found are: ", algo.get_champions_f())
     
         return algo.get_champions_x()[idx]
-        self.problem.pretty(algo.get_champions_x()[idx])
-        axis = self.problem.plot(algo.get_champions_x()[idx])
-        axis.legend(fontsize=6)
 
     def self_adaptive_differential_algorithm(self, generations=100, islands=8, island_population=20):
         """

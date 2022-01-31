@@ -32,6 +32,7 @@ def spice_kernels():
 
 
 def find_all_combinations(stuff):
+    # Does not consider visiting the same planet multiple times ...
     import itertools
 
     combs = []
@@ -61,15 +62,16 @@ def run_titan_archi():
 
     titan = pk.planet.spice('TITAN', 'SUN', 'ECLIPJ2000', 'NONE', pk.MU_SUN, 100, 100, 100)
 
+    # Defining the sequence and the problem
     planetary_sequence = [earth, venus, mars, jupiter, saturn, titan]
-
+    # many_sequences = find_all_combinations([venus, mars, jupiter, saturn])
+    # planetary_sequence = many_sequences[4]
     udp = TitanChemicalUDP(sequence=planetary_sequence, constrained=False)
 
     #prob = pg.problem(udp)
     #prob.c_tol = 1e-4
 
-    # # We solve it!!
-
+    # We solve it!!
     sol = Algorithms(problem=udp)
     sol.self_adaptive_differential_algorithm()
 

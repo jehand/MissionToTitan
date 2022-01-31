@@ -7,7 +7,7 @@ import numpy as np
 from math import log, acos, cos, sin, asin, exp
 
 
-class titan_chemical_udp(mga_1dsm):
+class TitanChemicalUDP(mga_1dsm):
     """
     This class represents a rendezvous mission to Titan modelled as an MGA-1DSM transfer. A launcher model
     is also used, so that the final mass delivered to Saturn, and the Delta V are the main objectives of this
@@ -31,7 +31,7 @@ class titan_chemical_udp(mga_1dsm):
         Args:
             - sequence (``array``): The sequence defines the fly-by sequence as pykep planet objects.
             - constrained (``bool``): Activates the constraint on the time of flight
-              (fitness will thus return two numbers, the objective function and the inequality constraint violation)
+              (fitness will thus return two numbers, the objective function and the inequality constraint violation).
         """
 
         super().__init__(

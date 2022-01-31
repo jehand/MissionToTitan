@@ -1,6 +1,7 @@
 import pykep as pk
 import pygmo as pg
-from chemical_propulsion import titan_chemical_udp
+from chemical_propulsion import TitanChemicalUDP
+from algorithms import Algorithms
 
 
 def spice_kernels():
@@ -62,25 +63,15 @@ def run_titan_archi():
 
     planetary_sequence = [earth, venus, mars, jupiter, saturn, titan]
 
-    udp = titan_chemical_udp(sequence=planetary_sequence, constrained=False)
+    udp = TitanChemicalUDP(sequence=planetary_sequence, constrained=False)
 
-    prob = pg.problem(udp)
-    prob.c_tol = 1e-4
-    # We solve it!!
-    uda = pg.sade(gen=100)
-    islands = 8
-    archi = pg.archipelago(algo=uda, prob=udp, n=islands, pop_size=20)
-    print(
-        "Running a Self-Adaptive Differential Evolution Algorithm .... on {} parallel islands".format(islands))
-    archi.evolve(10)
-    archi.wait()
-    sols = archi.get_champions_f()
-    sols2 = [item[0] for item in sols]
-    idx = sols2.index(min(sols2))
-    print("Done!! Solutions found are: ", archi.get_champions_f())
-    udp.pretty(archi.get_champions_x()[idx])
-    axis = udp.plot(archi.get_champions_x()[idx])
-    axis.legend(fontsize=6)
+    #prob = pg.problem(udp)
+    #prob.c_tol = 1e-4
+
+    # # We solve it!!
+
+    sol = Algorithms(problem=udp)
+    sol.self_adaptive_differential_algorithm()
 
 
 if __name__ == "__main__":

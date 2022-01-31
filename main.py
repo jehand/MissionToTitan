@@ -60,9 +60,9 @@ def run_titan_archi():
 
     titan = pk.planet.spice('TITAN', 'SUN', 'ECLIPJ2000', 'NONE', pk.MU_SUN, 100, 100, 100)
 
+    planetary_sequence = [earth, venus, mars, jupiter, saturn, titan]
 
-
-    udp = titan_chemical_udp(prob_id=12, constrained=False)
+    udp = titan_chemical_udp(sequence=planetary_sequence, constrained=False)
 
     prob = pg.problem(udp)
     prob.c_tol = 1e-4

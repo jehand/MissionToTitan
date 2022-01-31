@@ -23,56 +23,21 @@ class titan_chemical_udp(mga_1dsm):
        5) Remove the time constraint
     """
 
-    def __init__(self, prob_id=1, constrained=True):
+    def __init__(self, sequence=1, constrained=True):
         """
         The Titan problem of the trajectory gym consists in 48 different instances varying in fly-by sequence and
         the presence of a time constraint.
 
         Args:
-            - prob_id (``int``): The problem id defines the fly-by sequence.
+            - sequence (``array``): The sequence defines the fly-by sequence as pykep planet objects.
             - constrained (``bool``): Activates the constraint on the time of flight
               (fitness will thus return two numbers, the objective function and the inequality constraint violation)
         """
 
-        # Defining the different sequences
-        seq_titan = []
-        seq_titan.append([earth, venus, venus, venus, saturn, titan])
-        seq_titan.append([earth, venus, venus, earth, saturn, titan])
-        seq_titan.append([earth, venus, venus, mars, saturn, titan])
-        seq_titan.append([earth, venus, venus, jupiter, saturn, titan])
-
-        seq_titan.append([earth, venus, earth, venus, saturn, titan])
-        seq_titan.append([earth, venus, earth, earth, saturn, titan])
-        seq_titan.append([earth, venus, earth, mars, saturn, titan])
-        seq_titan.append([earth, venus, earth, jupiter, saturn, titan])
-
-        seq_titan.append([earth, venus, mars, venus, saturn, titan])
-        seq_titan.append([earth, venus, mars, earth, saturn, titan])
-        seq_titan.append([earth, venus, mars, mars, saturn, titan])
-        seq_titan.append([earth, venus, mars, jupiter, saturn, titan])
-
-        seq_titan.append([earth, earth, venus, venus, saturn, titan])
-        seq_titan.append([earth, earth, venus, earth, saturn, titan])
-        seq_titan.append([earth, earth, venus, mars, saturn, titan])
-        seq_titan.append([earth, earth, venus, jupiter, saturn, titan])
-
-        seq_titan.append([earth, earth, earth, venus, saturn, titan])
-        seq_titan.append([earth, earth, earth, earth, saturn, titan])
-        seq_titan.append([earth, earth, earth, mars, saturn, titan])
-        seq_titan.append([earth, earth, earth, jupiter, saturn, titan])
-
-        seq_titan.append([earth, earth, mars, venus, saturn, titan])
-        seq_titan.append([earth, earth, mars, earth, saturn, titan])
-        seq_titan.append([earth, earth, mars, mars, saturn, titan])
-        seq_titan.append([earth, earth, mars, jupiter, saturn, titan])
-
-        if prob_id > 24 or type(prob_id) != int or prob_id < 1:
-            raise ValueError("Titan problem id must be an integer in [1, 24]")
-
         super().__init__(
-            seq=seq_titan[prob_id - 1],
+            seq=sequence,
             t0=[pk.epoch_from_string("2021-DEC-28 11:58:50.816"), pk.epoch_from_string("2027-DEC-28 11:58:50.816")],
-            tof=[[20, 1000], [20, 1000], [20, 1000], [20, 1000], [20, 1000]],
+            tof=[[20, 1000] for _ in range(len(sequence)-1)],
             vinf=[2.5, 4.9],
             add_vinf_dep=False,
             add_vinf_arr=True,
@@ -86,7 +51,7 @@ class titan_chemical_udp(mga_1dsm):
             rp_ub=10
         )
 
-        self.prob_id = prob_id
+        self.sequence = sequence
         self.constrained = constrained
 
     def fitness(self, x):
@@ -120,7 +85,7 @@ class titan_chemical_udp(mga_1dsm):
         return int(self.constrained)
 
     def get_name(self):
-        return "TandEM problem, id: " + str(self.prob_id)
+        return "TandEM sequence: " + str(self.sequence)
 
     def get_extra_info(self):
         retval = "\t Sequence: " + \

@@ -66,6 +66,8 @@ def run_titan_archi():
     planetary_sequence = [earth, venus, mars, jupiter, saturn, titan]
     # many_sequences = find_all_combinations([venus, mars, jupiter, saturn])
     # planetary_sequence = many_sequences[4]
+    # planetary_sequence.insert(0, earth)
+    # planetary_sequence.append(titan)
     udp = TitanChemicalUDP(sequence=planetary_sequence, constrained=False)
 
     #prob = pg.problem(udp)

@@ -91,7 +91,7 @@ class MGAElectricalPropulsion(mga_lt_nep):
 
         super().__init__(
             seq = sequence,
-            n_seg = [20 for _ in range(len(sequence)-1)],
+            n_seg = [100 for _ in range(len(sequence)-1)],
             t0 = [pk.epoch_from_string(departure_time[0]).mjd2000, pk.epoch_from_string(departure_time[1]).mjd2000],
             tof = [[100, 2000] for _ in range(len(sequence)-1)],
             vinf_dep = 3, #Need to change
@@ -103,26 +103,7 @@ class MGAElectricalPropulsion(mga_lt_nep):
             multi_objective = False,
             high_fidelity = high_fidelity_analysis
         )
-        
-        self.common_mu = sequence[0].mu_central_body
-        self._rp_target = 80330000 #redefine
-        self._e_target = 0.99 #redefine
-    
-    def _decode_times_and_vinf(self, x):
-        # 1 - we decode the times of flight
-        # decision vector is  [t0] + [u, v, Vinf, eta1, T1] + [beta, rp/rV, eta2, T2] + ...
-        retval_T = x[5::4]
 
-        # 2 - we decode the hyperbolic velocity at departure
-        theta = 2 * pi * x[1]
-        phi = acos(2 * x[2] - 1) - pi / 2
-
-        Vinfx = x[3] * cos(phi) * cos(theta)
-        Vinfy = x[3] * cos(phi) * sin(theta)
-        Vinfz = x[3] * sin(phi)
-
-        return (retval_T, Vinfx, Vinfy, Vinfz)
-            
     def pretty(self, x):
         """
         prob.pretty(x)
@@ -131,86 +112,66 @@ class MGAElectricalPropulsion(mga_lt_nep):
         Example::
           print(prob.pretty(x))
         """
-       # 1 -  we 'decode' the chromosome recording the various times of flight
-        # (days) in the list T and the cartesian components of vinf
-        T, Vinfx, Vinfy, Vinfz = self._decode_times_and_vinf(x)
+        from pykep.sims_flanagan import sc_state, leg
+        from pykep.core import EARTH_VELOCITY
 
-        # 2 - We compute the epochs and ephemerides of the planetary encounters
+        # We compute the epochs and ephemerides of the planetary encounters
         t_P = list([None] * (self._n_legs + 1))
         r_P = list([None] * (self._n_legs + 1))
         v_P = list([None] * (self._n_legs + 1))
-        DV = list([0.0] * (self._n_legs + 1))
         for i in range(len(self._seq)):
-            t_P[i] = epoch(x[0] + sum(T[0:i]))
+            t_P[i] = epoch(x[0] + sum(x[1:i * 8:8]))
             r_P[i], v_P[i] = self._seq[i].eph(t_P[i])
 
-        # 3 - We start with the first leg
+        T = []
+        for i in range(self._n_legs):
+            T.append(t_P[i+1].mjd2000 - t_P[i].mjd2000)
+
         print("First Leg: " + self._seq[0].name + " to " + self._seq[1].name)
         print("Departure: " + str(t_P[0]) +
               " (" + str(t_P[0].mjd2000) + " mjd2000) ")
         print("Duration: " + str(T[0]) + "days")
-        print("VINF: " + str(x[3] / 1000) + " km/sec")
+        print("VINF: " + str(x[3] * x[3] + x[4] * x[4] + x[5] * x[5] / (EARTH_VELOCITY * EARTH_VELOCITY)) + " km/sec") # Check this
 
-        v0 = [a + b for a, b in zip(v_P[0], [Vinfx, Vinfy, Vinfz])]
-        r, v = propagate_lagrangian(
-            r_P[0], v0, x[4] * T[0] * DAY2SEC, self.common_mu)
-
-        print("DSM after " + str(x[4] * T[0]) + " days")
-
-        # Lambert arc to reach seq[1]
-        dt = (1 - x[4]) * T[0] * DAY2SEC
-        l = lambert_problem_multirev(v, lambert_problem(
-            r, r_P[1], dt, self.common_mu, cw=False, max_revs=0))
-        v_end_l = l.get_v2()[0]
-        v_beg_l = l.get_v1()[0]
-
-        # First DSM occuring at time nu1*T1
-        DV[0] = norm([a - b for a, b in zip(v_beg_l, v)])
-        print("DSM magnitude: " + str(DV[0]) + "m/s")
-
-        # 4 - And we proceed with each successive leg
+        # We assemble the constraints.
+        # 1 - Mismatch Constraints
         for i in range(1, self._n_legs):
+            # Departure velocity of the spacecraft in the heliocentric frame
             print("\nleg no. " + str(i + 1) + ": " +
                   self._seq[i].name + " to " + self._seq[i + 1].name)
             print("Duration: " + str(T[i]) + "days")
-            # Fly-by
-            v_out = fb_prop(v_end_l, v_P[i], x[
-                            7 + (i - 1) * 4] * self._seq[i].radius, x[6 + (i - 1) * 4], self._seq[i].mu_self)
             print(
-                "Fly-by epoch: " + str(t_P[i]) + " (" + str(t_P[i].mjd2000) + " mjd2000) ")
+                "Fly-by epoch: " + str(t_P[i+1]) + " (" + str(t_P[i+1].mjd2000) + " mjd2000) ")
             print(
-                "Fly-by radius: " + str(x[7 + (i - 1) * 4]) + " planetary radii")
-            # s/c propagation before the DSM
-            r, v = propagate_lagrangian(
-                r_P[i], v_out, x[8 + (i - 1) * 4] * T[i] * DAY2SEC, self.common_mu)
-            print("DSM after " + str(x[8 + (i - 1) * 4] * T[i]) + " days")
-            # Lambert arc to reach Earth during (1-nu2)*T2 (second segment)
-            dt = (1 - x[8 + (i - 1) * 4]) * T[i] * DAY2SEC
-            l = lambert_problem_multirev(v, lambert_problem(r, r_P[i + 1], dt,
-                                self.common_mu, cw=False, max_revs=0))
-            v_end_l = l.get_v2()[0]
-            v_beg_l = l.get_v1()[0]
-            # DSM occuring at time nu2*T2
-            DV[i] = norm([a - b for a, b in zip(v_beg_l, v)])
-            print("DSM magnitude: " + str(DV[i]) + "m/s")
+                "Fly-by radius: " + str(x[2 + (i) * 8]) + " planetary radii") # Check this
 
-        # Last Delta-v
+            v0 = [a + b for a, b in zip(v_P[i], x[3 + 8 * i:6 + 8 * i])]
+            if i==0:
+                m0 = self._mass[1]
+            else:
+                m0 = x[2 + 8 * (i-1)]
+            x0 = sc_state(r_P[i], v0, m0)
+            vf = [a + b for a, b in zip(v_P[i+1], x[6 + 8 * i:9 + 8 * i])]
+            xf = sc_state(r_P[i+1], vf, x[2 + 8 * i])
+            idx_start = 1 + 8 * self._n_legs + sum(self._n_seg[:i]) * 3
+            idx_end   = 1 + 8 * self._n_legs + sum(self._n_seg[:i+1]) * 3
+            self._leg.set(t_P[i], x0, x[idx_start:idx_end], t_P[i+1], xf)
+            #print(self._leg)
+            times, r, v, m = self._leg.get_states()
+            #print("Radius", r[-1])
+
         print("\nArrival at " + self._seq[-1].name)
-        DV[-1] = norm([a - b for a, b in zip(v_end_l, v_P[-1])])
         print(
             "Arrival epoch: " + str(t_P[-1]) + " (" + str(t_P[-1].mjd2000) + " mjd2000) ")
-        print("Arrival Vinf: " + str(DV[-1]) + "m/s")
-        # In this case we compute the insertion DV as a single pericenter
-        # burn
-        DVper = np.sqrt(DV[-1] * DV[-1] + 2 *
-                        self._seq[-1].mu_self / self._rp_target)
-        DVper2 = np.sqrt(2 * self._seq[-1].mu_self / self._rp_target -
-                        self._seq[-1].mu_self / self._rp_target * (1. - self._e_target))
-        DVinsertion = np.abs(DVper - DVper2)
-        print("Insertion DV: " + str(DVinsertion) + "m/s")
+
+        n_fb = self._n_legs - 1
+        v_arr = (x[6 + n_fb * 8] * x[6 + n_fb * 8] + x[7 + n_fb * 8] * x[7 + n_fb * 8] + x[8 + n_fb * 8] * x[
+            8 + n_fb * 8])
+        print("Arrival Vinf: " + str(v_arr) + "m/s")
 
         print("Total mission time: " + str(sum(T) / 365.25) + " years (" + str(sum(T)) + " days)")
-       
+
+
     def __repr__(self):
         return "AEON low thrust MGA trajectory optimization"
 
@@ -262,7 +223,7 @@ if __name__ == "__main__":
     # Running the P2P electrical example
     # mars = pk.planet.spice('MARS BARYCENTER', 'SUN', 'ECLIPJ2000', 'NONE', pk.MU_SUN, 100, 100, 100)
     # mars.safe_radius = 1.05
-    
+    #
     # udp = P2PElectricalPropulsion(mars)
     # sol = Algorithms(problem=udp)
     # champion = sol.self_adaptive_differential_algorithm()
@@ -289,11 +250,11 @@ if __name__ == "__main__":
     titan = pk.planet.spice('TITAN', 'SUN', 'ECLIPJ2000', 'NONE', pk.MU_SUN, 100, 100, 100)
 
     # Defining the sequence and the problem
-    planetary_sequence = [earth, mars]
+    planetary_sequence = [earth, mars, jupiter]
     udp = MGAElectricalPropulsion(planetary_sequence, high_fidelity_analysis=True)
     sol = Algorithms(problem=udp)
     champion = sol.self_adaptive_differential_algorithm()
-    #udp.pretty(champion)
+    udp.pretty(champion)
     axis = udp.plot(champion)
     #axis.legend(fontsize=6)
     plt.show()

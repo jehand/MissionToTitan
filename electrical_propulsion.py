@@ -19,6 +19,8 @@ def norm(x):
 
 # Could add a launcher model to not need an initial mass, just have the model calculate the initial mass
 
+# x decision vector  = [ , , , v0x, v0y, v0z, vfx, vfy, vfz ]
+
 class P2PElectricalPropulsion(lt_margo):
     """
     This class represents a rendezvous mission to a nearby planet modelled with electrical propulsion (can be 
@@ -130,33 +132,29 @@ class MGAElectricalPropulsion(mga_lt_nep):
         print("First Leg: " + self._seq[0].name + " to " + self._seq[1].name)
         print("Departure: " + str(t_P[0]) +
               " (" + str(t_P[0].mjd2000) + " mjd2000) ")
-        print("Duration: " + str(T[0]) + "days")
-        print("VINF: " + str(x[3] * x[3] + x[4] * x[4] + x[5] * x[5] / (EARTH_VELOCITY * EARTH_VELOCITY)) + " km/sec") # Check this
+        print("Duration: " + str(T[0]) + " days")
+        print("VINF: " + str((x[3] * x[3] + x[4] * x[4] + x[5] * x[5]) / (EARTH_VELOCITY * EARTH_VELOCITY)) + " km/sec") # Check this
 
-        # We assemble the constraints.
-        # 1 - Mismatch Constraints
+        # Text for the different legs
         for i in range(1, self._n_legs):
             # Departure velocity of the spacecraft in the heliocentric frame
             print("\nleg no. " + str(i + 1) + ": " +
                   self._seq[i].name + " to " + self._seq[i + 1].name)
             print("Duration: " + str(T[i]) + "days")
             print(
-                "Fly-by epoch: " + str(t_P[i+1]) + " (" + str(t_P[i+1].mjd2000) + " mjd2000) ")
+                "Fly-by epoch: " + str(t_P[i]) + " (" + str(t_P[i].mjd2000) + " mjd2000) ")
             print(
-                "Fly-by radius: " + str(x[2 + (i) * 8]) + " planetary radii") # Check this
+                "Fly-by radius: " + str(x[2 + (i-1) * 8]) + " planetary radii") # Check this
 
             v0 = [a + b for a, b in zip(v_P[i], x[3 + 8 * i:6 + 8 * i])]
-            if i==0:
-                m0 = self._mass[1]
-            else:
-                m0 = x[2 + 8 * (i-1)]
+            m0 = x[2 + 8 * (i-1)]
             x0 = sc_state(r_P[i], v0, m0)
             vf = [a + b for a, b in zip(v_P[i+1], x[6 + 8 * i:9 + 8 * i])]
             xf = sc_state(r_P[i+1], vf, x[2 + 8 * i])
             idx_start = 1 + 8 * self._n_legs + sum(self._n_seg[:i]) * 3
             idx_end   = 1 + 8 * self._n_legs + sum(self._n_seg[:i+1]) * 3
             self._leg.set(t_P[i], x0, x[idx_start:idx_end], t_P[i+1], xf)
-            #print(self._leg)
+            print(self._leg)
             times, r, v, m = self._leg.get_states()
             #print("Radius", r[-1])
 

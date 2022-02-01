@@ -32,7 +32,7 @@ class Algorithms:
         sols = algo.get_champions_f()
         sols2 = [item[0] for item in sols]
         idx = sols2.index(min(sols2))
-        print("Done!! Solutions found are: ", algo.get_champions_f())
+        print("Done!!") #Solutions found are: ", algo.get_champions_f())
     
         return algo.get_champions_x()[idx]
 

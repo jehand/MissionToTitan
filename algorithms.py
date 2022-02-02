@@ -51,6 +51,14 @@ class Algorithms:
             "Running a Self-Adaptive Differential Evolution Algorithm .... on {} parallel islands".format(islands))
 
         return self.solve(archi)
+    
+    def extended_ant_colony(self, generations=1000, kernel=15, q_convergence=1.0, oracle_penalty=1e9, accuracy=0.01, thresh=500, std_conv=7, islands=8, island_population=20):
+        uda=pg.gaco(gen=generations, ker=kernel, q=q_convergence, oracle=oracle_penalty, acc=accuracy, threshold=thresh, n_gen_mark=std_conv)
+        archi = pg.archipelago(algo=uda, prob=self.problem, n=islands, pop_size=island_population)
+        print(
+            "Running an Extended Ant-Colony Algorithm .... on {} parallel islands".format(islands))
+
+        return self.solve(archi)
 
     def func_names(self):
         """

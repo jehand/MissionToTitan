@@ -72,6 +72,15 @@ class MGAElectricalPropulsion(mga_lt_nep):
     For solar, the power is calculated to decay with distance from the sun (not including impacting objects that might get in the way). 
     The trajectory is modelled using the Sims-Flanagan model.
 
+    The decision vector (chromosome) is::
+      [t0] + 
+      [T1, mf1, Vxi1, Vyi1, Vzi1, Vxf1, Vyf1, Vzf1] + 
+      [T2, mf2, Vxi2, Vyi2, Vzi2, Vxf2, Vyf2, Vzf2] + 
+      ... + 
+      [throttles1] + 
+      [throttles2] + 
+      ...
+
     .. note::
 
        The idea is to use the regular MGA_LT class in pykep, but add way to do solar power.
@@ -93,7 +102,7 @@ class MGAElectricalPropulsion(mga_lt_nep):
 
         super().__init__(
             seq = sequence,
-            n_seg = [100 for _ in range(len(sequence)-1)],
+            n_seg = [5 for _ in range(len(sequence)-1)],
             t0 = [pk.epoch_from_string(departure_time[0]).mjd2000, pk.epoch_from_string(departure_time[1]).mjd2000],
             tof = [[100, 2000] for _ in range(len(sequence)-1)],
             vinf_dep = 3, #Need to change
@@ -156,7 +165,10 @@ class MGAElectricalPropulsion(mga_lt_nep):
             self._leg.set(t_P[i], x0, x[idx_start:idx_end], t_P[i+1], xf)
             print(self._leg)
             times, r, v, m = self._leg.get_states()
-            #print("Radius", r[-1])
+            #print(r[0], r_P[i])
+            print("x", x)
+            fly_by_radius = norm([r[0][j] - r_P[i][j] for j in range(3)])
+            print("Radius", fly_by_radius/self._seq[i].radius)
 
         print("\nArrival at " + self._seq[-1].name)
         print(
@@ -253,6 +265,6 @@ if __name__ == "__main__":
     sol = Algorithms(problem=udp)
     champion = sol.self_adaptive_differential_algorithm()
     udp.pretty(champion)
-    axis = udp.plot(champion)
+    #axis = udp.plot(champion)
     #axis.legend(fontsize=6)
-    plt.show()
+    #plt.show()

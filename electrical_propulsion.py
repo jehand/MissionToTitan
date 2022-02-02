@@ -68,9 +68,8 @@ class P2PElectricalPropulsion(lt_margo):
 
 class MGAElectricalPropulsion(mga_lt_nep):
     """
-    This class uses a multiple gravity assist (MGA) approach to reach Titan modelled with electrical propulsion (meant to be solar). 
-    For solar, the power is calculated to decay with distance from the sun (not including impacting objects that might get in the way). 
-    The trajectory is modelled using the Sims-Flanagan model.
+    This class uses a multiple gravity assist (MGA) approach to reach Titan modelled with electrical propulsion (where
+    Solar is modelled just as the lowest thrust option). The trajectory is modelled using the Sims-Flanagan model.
 
     The decision vector (chromosome) is::
       [t0] + 
@@ -86,7 +85,7 @@ class MGAElectricalPropulsion(mga_lt_nep):
        The idea is to use the regular MGA_LT class in pykep, but add way to do solar power.
     """
     def __init__(self, sequence, departure_time=["2021-DEC-28 11:58:50.816", "2027-DEC-28 11:58:50.816"], initial_mass=[1200., 2000.0], 
-                 thrust=0.5, I_sp=3500.0, solar=True, high_fidelity_analysis=False):
+                 thrust=0.5, I_sp=3500.0, high_fidelity_analysis=False):
         """
         Defining the problem and allowing the user to input most of the parameters
 
@@ -96,7 +95,6 @@ class MGAElectricalPropulsion(mga_lt_nep):
             - initial_mass (``2D-array`` of ``float``): The range of initial masses for the spacecraft.
             - thrust (``float``): The thrust of the propulsion system at 1AU.
             - Isp (``float``): The specific impulse of the propulsion system at 1AU. 
-            - solar (``bool``): Activates a solar thrust model for the thrust - distance dependency.
             - high_fidelity_analysis (``bool``): Makes the trajectory computations slower, but actually dynamically feasible.
         """
 
@@ -317,14 +315,14 @@ if __name__ == "__main__":
 
     titan = pk.planet.spice('TITAN', 'SUN', 'ECLIPJ2000', 'NONE', pk.MU_SUN, 100, 100, 100)
 
-    # Defining the sequence and the problem
+    # Defining the sequence and solving the optimization problem
     planetary_sequence = [earth, mars, jupiter]
     udp = MGAElectricalPropulsion(planetary_sequence, high_fidelity_analysis=True)
     sol = Algorithms(problem=udp)
     champion = sol.self_adaptive_differential_algorithm()
+
     print("Feasible: ", pg.problem(udp).feasibility_x(champion))
     udp.pretty(champion)
-
     axis = udp.plot(champion)
     axis.legend(fontsize=6)
     plt.show()

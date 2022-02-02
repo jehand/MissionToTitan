@@ -1,11 +1,13 @@
 import pykep as pk
 from pykep.trajopt import lt_margo, mga_lt_nep, mr_lt_nep, launchers
 from pykep.planet import jpl_lp
-from pykep.core import epoch, DAY2SEC, MU_SUN, lambert_problem, propagate_lagrangian, fb_prop, AU, EARTH_VELOCITY
+from pykep.core import epoch, AU
 from pykep import epoch_from_string
-from pykep.trajopt._lambert import lambert_problem_multirev
+from pykep.sims_flanagan import sc_state
+
 from algorithms import Algorithms
 import matplotlib.pyplot as plt
+import pygmo as pg
 
 import numpy as np
 from math import log, acos, cos, sin, asin, exp, pi, sqrt
@@ -18,8 +20,6 @@ def norm(x):
 # chemical would be used, therefore we do not need to model the initial trajectory as a MGA?)
 
 # Could add a launcher model to not need an initial mass, just have the model calculate the initial mass
-
-# x decision vector  = [ , , , v0x, v0y, v0z, vfx, vfy, vfz ]
 
 class P2PElectricalPropulsion(lt_margo):
     """
@@ -115,6 +115,62 @@ class MGAElectricalPropulsion(mga_lt_nep):
             high_fidelity = high_fidelity_analysis
         )
 
+    # And this helps visualizing the trajectory
+    def plot(self, x, axes=None):
+        """
+        ax = prob.plot(x, ax=None)
+        - x: encoded trajectory
+        - ax: matplotlib axis where to plot. If None figure and axis will be created
+        - [out] ax: matplotlib axis where to plot
+        Plots the trajectory represented by a decision vector x on the 3d axis ax
+        Example::
+          ax = prob.plot(x)
+        """
+        import matplotlib as mpl
+        from mpl_toolkits.mplot3d import Axes3D
+        import matplotlib.pyplot as plt
+        from pykep.orbit_plots import plot_sf_leg, plot_planet
+
+        # Creating the axis if necessary
+        if axes is None:
+            mpl.rcParams['legend.fontsize'] = 10
+            fig = plt.figure()
+            ax = fig.add_subplot(projection='3d')
+        else:
+            ax = axes
+
+        # Plotting the Sun ........
+        ax.scatter([0], [0], [0], color=['y'])
+
+        # We compute the epochs and ephemerides of the planetary encounters
+        t_P = list([None] * (self._n_legs + 1))
+        r_P = list([None] * (self._n_legs + 1))
+        v_P = list([None] * (self._n_legs + 1))
+        for i in range(len(self._seq)):
+            t_P[i] = epoch(x[0] + sum(x[1:i*8:8]))
+            r_P[i], v_P[i] = self._seq[i].eph(t_P[i])
+            plot_planet(self._seq[i], t0 = t_P[i],
+                        units=AU, legend=True, color=(0.7, 0.7, 0.7), s=30, axes=ax)
+
+        # We assemble the constraints.
+        # 1 - Mismatch Constraints
+        for i in range(self._n_legs):
+            # Departure velocity of the spacecraft in the heliocentric frame
+            v0 = [a + b for a, b in zip(v_P[i], x[3 + 8 * i:6 + 8 * i])]
+            if i == 0:
+                m0 = self._mass[1]
+            else:
+                m0 = x[2 + 8 * (i-1)]
+            x0 = sc_state(r_P[i], v0, m0)
+            vf = [a + b for a, b in zip(v_P[i+1], x[6 + 8 * i:9 + 8 * i])]
+            xf = sc_state(r_P[i+1], vf, x[2 + 8 * i])
+            idx_start = 1 + 8 * self._n_legs + sum(self._n_seg[:i]) * 3
+            idx_end   = 1 + 8 * self._n_legs + sum(self._n_seg[:i+1]) * 3
+            self._leg.set(t_P[i], x0, x[idx_start:idx_end], t_P[i+1], xf)
+            plot_sf_leg(self._leg, units=AU, N=10, axes=ax, legend=False)
+
+        return ax
+
     def pretty(self, x):
         """
         prob.pretty(x)
@@ -142,8 +198,13 @@ class MGAElectricalPropulsion(mga_lt_nep):
         print("Departure: " + str(t_P[0]) +
               " (" + str(t_P[0].mjd2000) + " mjd2000) ")
         print("Duration: " + str(T[0]) + " days")
-        print("VINF: " + str((x[3] * x[3] + x[4] * x[4] + x[5] * x[5]) / (EARTH_VELOCITY * EARTH_VELOCITY)) + " km/sec") # Check this
 
+        v_inf = [x[3], x[4], x[5]]
+        v_first_f = [x[6], x[7], x[8]]
+        print("VINF: " + str(norm(v_inf)/1000) + " km/sec")
+
+        DV = [norm([a - b for a, b in zip(v_first_f, v_inf)])]
+        print("Delta V: " + str(DV[0]) + " m/s")
         # Text for the different legs
         for i in range(1, self._n_legs):
             # Departure velocity of the spacecraft in the heliocentric frame
@@ -152,35 +213,32 @@ class MGAElectricalPropulsion(mga_lt_nep):
             print("Duration: " + str(T[i]) + "days")
             print(
                 "Fly-by epoch: " + str(t_P[i]) + " (" + str(t_P[i].mjd2000) + " mjd2000) ")
-            print(
-                "Fly-by radius: " + str(x[2 + (i-1) * 8]) + " planetary radii") # Check this
+
+            print("Mass change: " + str(x[2 + 8*(i-1)] - x[2 + 8*i]) + " kg")
 
             v0 = [a + b for a, b in zip(v_P[i], x[3 + 8 * i:6 + 8 * i])]
-            m0 = x[2 + 8 * (i-1)]
-            x0 = sc_state(r_P[i], v0, m0)
             vf = [a + b for a, b in zip(v_P[i+1], x[6 + 8 * i:9 + 8 * i])]
-            xf = sc_state(r_P[i+1], vf, x[2 + 8 * i])
-            idx_start = 1 + 8 * self._n_legs + sum(self._n_seg[:i]) * 3
-            idx_end   = 1 + 8 * self._n_legs + sum(self._n_seg[:i+1]) * 3
-            self._leg.set(t_P[i], x0, x[idx_start:idx_end], t_P[i+1], xf)
-            print(self._leg)
-            times, r, v, m = self._leg.get_states()
-            #print(r[0], r_P[i])
-            print("x", x)
-            fly_by_radius = norm([r[0][j] - r_P[i][j] for j in range(3)])
-            print("Radius", fly_by_radius/self._seq[i].radius)
+
+            delta_v = norm([a-b for a,b in zip(vf,v0)])
+            DV.append(delta_v)
+            print("Delta V: " + str(delta_v) + " m/s")
 
         print("\nArrival at " + self._seq[-1].name)
         print(
             "Arrival epoch: " + str(t_P[-1]) + " (" + str(t_P[-1].mjd2000) + " mjd2000) ")
 
         n_fb = self._n_legs - 1
-        v_arr = (x[6 + n_fb * 8] * x[6 + n_fb * 8] + x[7 + n_fb * 8] * x[7 + n_fb * 8] + x[8 + n_fb * 8] * x[
+        v_arr = sqrt(x[6 + n_fb * 8] * x[6 + n_fb * 8] + x[7 + n_fb * 8] * x[7 + n_fb * 8] + x[8 + n_fb * 8] * x[
             8 + n_fb * 8])
-        print("Arrival Vinf: " + str(v_arr) + "m/s")
+        print("Arrival Vinf: " + str(v_arr/1000) + " km/s")
 
+        m_0 = x[2]
+        m_f = x[2 + n_fb * 8]
+
+        print("\n" + "Initial Mass: " + str(m_0) + " kg")
+        print("Final Mass: " + str(m_f) + " kg")
+        print("Total Delta V: " + str(sum(DV)) + " m/s")
         print("Total mission time: " + str(sum(T) / 365.25) + " years (" + str(sum(T)) + " days)")
-
 
     def __repr__(self):
         return "AEON low thrust MGA trajectory optimization"
@@ -264,7 +322,9 @@ if __name__ == "__main__":
     udp = MGAElectricalPropulsion(planetary_sequence, high_fidelity_analysis=True)
     sol = Algorithms(problem=udp)
     champion = sol.self_adaptive_differential_algorithm()
+    print("Feasible: ", pg.problem(udp).feasibility_x(champion))
     udp.pretty(champion)
-    #axis = udp.plot(champion)
-    #axis.legend(fontsize=6)
-    #plt.show()
+
+    axis = udp.plot(champion)
+    axis.legend(fontsize=6)
+    plt.show()

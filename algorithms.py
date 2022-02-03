@@ -1,6 +1,5 @@
 import pygmo as pg
 
-
 class Algorithms:
     """
     This class  holds a compilation of the different optimization algorithms that can be used to solve the trajectory
@@ -18,7 +17,7 @@ class Algorithms:
 
         self.problem = problem
         self.local_algo = [self.self_adaptive_differential_algorithm, self.extended_ant_colony,
-                           self.particle_swarming_optimization, self.simple_genetic_algorithm]  # storing the function names of the different algorithms
+                           self.particle_swarming_optimization, self.simple_genetic_algorithm, self.calculus]  # storing the function names of the different algorithms
         self.global_algo = [self.monotonic_basin_hopping]
 
     def solve(self, algo):
@@ -29,7 +28,7 @@ class Algorithms:
             - algo (``pygmo algorithm``): The algorithm that will be used to solve the pygmo problem.
         """
 
-        algo.evolve()
+        algo.evolve(10)
         algo.wait()
         sols = algo.get_champions_f()
         sols2 = [item[0] for item in sols]
@@ -126,6 +125,19 @@ class Algorithms:
         print(
             "Using Archipelago .... on {} parallel islands".format(islands))
         return self.solve(archi)
+    
+    def calculus(self, algo="slsqp"):
+        """
+        Defines a calculus based approach to optimizing using nlopt.
+
+        Args:
+            - algo (``str``): Name of the calculus based approach in nlopt.
+        """
+        uda = pg.nlopt(algo)
+        print(
+            "Running a Calculus Based " + algo + " Approach ....")
+        
+        return uda
 
     def local_opt_names(self):
         """

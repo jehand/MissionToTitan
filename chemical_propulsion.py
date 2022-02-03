@@ -2,6 +2,7 @@ import pykep as pk
 from pykep.trajopt import mga_1dsm, launchers
 from pykep.planet import jpl_lp
 from pykep import epoch_from_string
+import pygmo as pg
 
 import numpy as np
 from math import log, acos, cos, sin, asin, exp
@@ -92,6 +93,9 @@ class TitanChemicalUDP(mga_1dsm):
                  [pl.name for pl in self._seq].__repr__() + "\n\t Constrained: " + \
                  str(self.constrained)
         return retval
+
+    def gradient(self, x):
+        return pg.estimate_gradient((lambda x: self.fitness(x), x), dx = 1e-8)
 
     def pretty(self, x):
         """

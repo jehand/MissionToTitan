@@ -2,7 +2,8 @@ import pykep as pk
 import pygmo as pg
 from chemical_propulsion import TitanChemicalUDP
 from algorithms import Algorithms
-
+import matplotlib.pyplot as plt
+import matplotlib as mpl
 
 def spice_kernels():
     # Downloading the spice kernel
@@ -69,22 +70,30 @@ def run_titan_archi():
     # planetary_sequence.insert(0, earth)
     # planetary_sequence.append(titan)
     udp = TitanChemicalUDP(sequence=planetary_sequence, constrained=False)
-
     #prob = pg.problem(udp)
+    #print(prob)
     #prob.c_tol = 1e-4
 
     # We solve it!!
     sol = Algorithms(problem=udp)
-    champion = sol.self_adaptive_differential_algorithm()
+    #uda = sol.self_adaptive_differential_algorithm()
+    uda = sol.calculus(algo="slsqp")
+    champion = sol.archipelago(uda, islands=8, island_population=20)
+
     udp.pretty(champion)
-    axis = udp.plot(champion)
+    print(pg.problem(udp).feasibility_x(champion))
+    
+    mpl.rcParams['legend.fontsize'] = 6
+    
+    fig = plt.figure()
+    axis = fig.add_subplot(projection='3d')
+    udp.plot(champion, ax=axis)
     axis.legend(fontsize=6)
+    plt.show()
 
 
 if __name__ == "__main__":
     # Checks to make sure the spice kernels have been imported
     spice_kernels()
-
-    # Going to create a list of functions that
 
     run_titan_archi()

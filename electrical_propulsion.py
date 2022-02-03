@@ -100,7 +100,7 @@ class MGAElectricalPropulsion(mga_lt_nep):
 
         super().__init__(
             seq = sequence,
-            n_seg = [5 for _ in range(len(sequence)-1)],
+            n_seg = [20 for _ in range(len(sequence)-1)],
             t0 = [pk.epoch_from_string(departure_time[0]).mjd2000, pk.epoch_from_string(departure_time[1]).mjd2000],
             tof = [[100, 2000] for _ in range(len(sequence)-1)],
             vinf_dep = 3, #Need to change
@@ -269,7 +269,7 @@ class MRElectricalPropulsion(mr_lt_nep):
 
         super().__init__(
             seq = sequence,
-            n_seg = [20 for _ in range(len(sequence)-1)],
+            n_seg = [30 for _ in range(len(sequence)-1)],
             t0 = [pk.epoch_from_string(departure_time[0]).mjd2000, pk.epoch_from_string(departure_time[1]).mjd2000],
             tof = [[100, 2000] for _ in range(len(sequence)-1)],
             vinf_dep = 3, #Need to change
@@ -306,8 +306,8 @@ if __name__ == "__main__":
 
     # Defining the sequence and problem
     planetary_sequence = [earth, mars]
-    #udp = MGAElectricalPropulsion(planetary_sequence, high_fidelity_analysis=True)
-    udp = P2PElectricalPropulsion(mars)
+    udp = MGAElectricalPropulsion(planetary_sequence, high_fidelity_analysis=True)
+    # udp = P2PElectricalPropulsion(mars)
 
     # Solving the optimization problem
 
@@ -315,17 +315,26 @@ if __name__ == "__main__":
     gen = 1000
     islands = 16
     islands_pop = 100
-    uda = sol.self_adaptive_differential_algorithm(generations=gen)
+    #uda = sol.self_adaptive_differential_algorithm(generations=gen)
     #uda = sol.extended_ant_colony(generations=gen)
     #uda = sol.simple_genetic_algorithm(generations=gen)
     #uda = sol.particle_swarming_optimization(generations=gen)
+    uda = sol.calculus(algo="slsqp")
     uda2 = sol.monotonic_basin_hopping(uda)
     champion = sol.archipelago(uda2, islands=islands, island_population=islands_pop)
 
     udp.pretty(champion)
     print("Feasible: ", pg.problem(udp).feasibility_x(champion))
 
-    #axis = udp.plot(champion)
-    axis = udp.plot_traj(champion)
+    axis = udp.plot(champion)
+    #axis = udp.plot_traj(champion)
     axis.legend(fontsize=6)
     plt.show()
+
+    """
+    Questions:
+    1) Low thrust implementations + pygmo algorithms (MR_LT vs MGA_LT vs LT_MARGO)
+    2) Pykep tips and tricks
+    3) Hybrid propulsion?
+    4) How to include sizing (would that be in the fitness?)
+    """

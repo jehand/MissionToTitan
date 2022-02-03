@@ -230,7 +230,7 @@ class MGAElectricalPropulsion(mga_lt_nep):
             8 + n_fb * 8])
         print("Arrival Vinf: " + str(v_arr/1000) + " km/s")
 
-        m_0 = x[2]
+        m_0 = self._sc.mass
         m_f = x[2 + n_fb * 8]
 
         print("\n" + "Initial Mass: " + str(m_0) + " kg")
@@ -286,18 +286,7 @@ if __name__ == "__main__":
     pk.util.load_spice_kernel("sat441.bsp")
     pk.util.load_spice_kernel("de432s.bsp")
 
-    # Running the P2P electrical example
-    # mars = pk.planet.spice('MARS BARYCENTER', 'SUN', 'ECLIPJ2000', 'NONE', pk.MU_SUN, 100, 100, 100)
-    # mars.safe_radius = 1.05
-    #
-    # udp = P2PElectricalPropulsion(mars)
-    # sol = Algorithms(problem=udp)
-    # champion = sol.self_adaptive_differential_algorithm()
-    # udp.pretty(champion)
-    # axis = udp.plot_traj(champion)
-    # axis.legend(fontsize=6)
-    # plt.show()
-    # Running the MGA electrical example
+    # Running the electrical example
     earth = pk.planet.spice('EARTH BARYCENTER', 'SUN', 'ECLIPJ2000', 'NONE', pk.MU_SUN, pk.MU_EARTH,
                             pk.EARTH_RADIUS, pk.EARTH_RADIUS * 1.05)
 
@@ -315,14 +304,28 @@ if __name__ == "__main__":
 
     titan = pk.planet.spice('TITAN', 'SUN', 'ECLIPJ2000', 'NONE', pk.MU_SUN, 100, 100, 100)
 
-    # Defining the sequence and solving the optimization problem
-    planetary_sequence = [earth, mars, jupiter]
-    udp = MGAElectricalPropulsion(planetary_sequence, high_fidelity_analysis=True)
-    sol = Algorithms(problem=udp)
-    champion = sol.self_adaptive_differential_algorithm()
+    # Defining the sequence and problem
+    planetary_sequence = [earth, mars]
+    #udp = MGAElectricalPropulsion(planetary_sequence, high_fidelity_analysis=True)
+    udp = P2PElectricalPropulsion(mars)
 
-    print("Feasible: ", pg.problem(udp).feasibility_x(champion))
+    # Solving the optimization problem
+
+    sol = Algorithms(problem=udp)
+    gen = 1000
+    islands = 16
+    islands_pop = 100
+    uda = sol.self_adaptive_differential_algorithm(generations=gen)
+    #uda = sol.extended_ant_colony(generations=gen)
+    #uda = sol.simple_genetic_algorithm(generations=gen)
+    #uda = sol.particle_swarming_optimization(generations=gen)
+    uda2 = sol.monotonic_basin_hopping(uda)
+    champion = sol.archipelago(uda2, islands=islands, island_population=islands_pop)
+
     udp.pretty(champion)
-    axis = udp.plot(champion)
+    print("Feasible: ", pg.problem(udp).feasibility_x(champion))
+
+    #axis = udp.plot(champion)
+    axis = udp.plot_traj(champion)
     axis.legend(fontsize=6)
     plt.show()

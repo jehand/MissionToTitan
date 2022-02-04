@@ -4,6 +4,9 @@ from pykep.planet import jpl_lp
 from pykep import epoch_from_string
 import pygmo as pg
 
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+from algorithms import Algorithms
 import numpy as np
 from math import log, acos, cos, sin, asin, exp
 
@@ -86,7 +89,7 @@ class TitanChemicalUDP(mga_1dsm):
         return int(self.constrained)
 
     def get_name(self):
-        return "TandEM sequence: " + str(self.sequence)
+        return "AEON sequence: " + str(self.sequence)
 
     def get_extra_info(self):
         retval = "\t Sequence: " + \
@@ -132,3 +135,81 @@ class TitanChemicalUDP(mga_1dsm):
     def __repr__(self):
         return "AEON (Trajectory Optimisation for a Rendezvous with Titan)"
 
+if __name__ == "__main__":
+    pk.util.load_spice_kernel("sat441.bsp")
+    pk.util.load_spice_kernel("de432s.bsp")
+    
+    earth = pk.planet.spice('EARTH BARYCENTER', 'SUN', 'ECLIPJ2000', 'NONE', pk.MU_SUN, pk.MU_EARTH,
+                            pk.EARTH_RADIUS, pk.EARTH_RADIUS * 1.05)
+
+    venus = pk.planet.spice('VENUS BARYCENTER', 'SUN', 'ECLIPJ2000', 'NONE', pk.MU_SUN, 100, 100, 100)
+    venus.safe_radius = 1.05
+
+    mars = pk.planet.spice('MARS BARYCENTER', 'SUN', 'ECLIPJ2000', 'NONE', pk.MU_SUN, 100, 100, 100)
+    mars.safe_radius = 1.05
+
+    jupiter = pk.planet.spice('JUPITER BARYCENTER', 'SUN', 'ECLIPJ2000', 'NONE', pk.MU_SUN, 100, 100, 100)
+    jupiter.safe_radius = 1.7
+
+    saturn = pk.planet.spice('SATURN BARYCENTER', 'SUN', 'ECLIPJ2000', 'NONE', pk.MU_SUN, 100, 100, 100)
+    saturn.safe_radius = 1.5
+
+    titan = pk.planet.spice('TITAN', 'SUN', 'ECLIPJ2000', 'NONE', pk.MU_SUN, 100, 100, 100)
+
+    # Defining the sequence and the problem
+    planetary_sequence = [earth, venus, mars, jupiter, saturn, titan]
+    # many_sequences = find_all_combinations([venus, mars, jupiter, saturn])
+    # planetary_sequence = many_sequences[4]
+    # planetary_sequence.insert(0, earth)
+    # planetary_sequence.append(titan)
+    udp = TitanChemicalUDP(sequence=planetary_sequence, constrained=False)
+    #prob = pg.problem(udp)
+    #print(prob)
+    #prob.c_tol = 1e-4
+
+    # We solve it!!
+    sol = Algorithms(problem=udp)
+    #uda = sol.self_adaptive_differential_algorithm()
+    uda = sol.calculus(algo="slsqp")
+    champion = sol.archipelago(uda, islands=8, island_population=20)
+
+    udp.pretty(champion)
+    print(pg.problem(udp).feasibility_x(champion))
+    
+    mpl.rcParams['legend.fontsize'] = 6
+    
+    fig = plt.figure()
+    axis = fig.add_subplot(projection='3d')
+    udp.plot(champion, ax=axis)
+    axis.legend(fontsize=6)
+    plt.show()
+    
+    
+    """
+    Problem definition: 
+    1) MGA_1DSM to Saturn
+    2) Once under Saturn's influence, switch to Saturns point of reference and do a PL2PL to Titan
+    3) Once under Titan's influence, burn into the orbit we are concerned with
+
+    Constraints:
+    1) Vinf at Titan
+    2) Orbit at Titan
+    3) Payload mass
+    4) Vinf at Saturn maybe?
+    6) Launcher capability
+    
+    Minimizing:
+    1) Mass difference (fuel consumption: (m0-mf) / m0)
+    2) Time of flight
+    
+    Notes:
+    1) Have a feasibility while loop after to repeat until you get feasible results (try catch)
+    
+    MGA_1DSM Decision Vector:
+                         0     1  2   3     4     5      6      7     8    9   ....    -1
+      direct encoding: [t0] + [u, v, Vinf, eta1, T1] + [beta, rp/rV, eta2, T2] + ... 
+      alpha encoding:  [t0] + [u, v, Vinf, eta1, a1] + [beta, rp/rV, eta2, a2] + ... + [T]
+      eta encoding:    [t0] + [u, v, Vinf, eta1, n1] + [beta, rp/rV, eta2, n2] + ...
+      
+      where t0 is a mjd2000, Vinf is in km/s, T in days, beta in radians and the rest non dimensional.
+    """

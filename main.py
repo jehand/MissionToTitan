@@ -5,6 +5,7 @@ from algorithms import Algorithms
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 
+
 def spice_kernels():
     # Downloading the spice kernel
     import os.path

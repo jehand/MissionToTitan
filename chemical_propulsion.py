@@ -204,6 +204,7 @@ if __name__ == "__main__":
     
     Notes:
     1) Have a feasibility while loop after to repeat until you get feasible results (try catch)
+    2) Add augmented lagrangian
     
     MGA_1DSM Decision Vector:
                          0     1  2   3     4     5      6      7     8    9   ....    -1

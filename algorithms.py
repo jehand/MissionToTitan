@@ -18,7 +18,7 @@ class Algorithms:
         self.problem = problem
         self.local_algo = [self.self_adaptive_differential_algorithm, self.extended_ant_colony,
                            self.particle_swarming_optimization, self.simple_genetic_algorithm, self.calculus]  # storing the function names of the different algorithms
-        self.global_algo = [self.monotonic_basin_hopping]
+        self.global_algo = [self.monotonic_basin_hopping, self.augmented_lagrangian]
 
     def solve(self, algo):
         """
@@ -137,6 +137,21 @@ class Algorithms:
         print(
             "Running a Calculus Based " + algo + " Approach ....")
         
+        return uda
+
+    def augmented_lagrangian(self, local_algo="slsqp"):
+        """
+        Defines an augmented lagrangian approach to optimizing using nlopt.
+
+        Args:
+            - local_algo (``str``): Name of the nlopt algorithm used as a local optimizer for auglag.
+        """
+        uda = pg.algorithm(uda=pg.nlopt("auglag"))
+        uda.extract(pg.nlopt).local_optimizer = pg.nlopt(local_algo)
+
+        print(
+            "Running an Augmented Lagrangian With A " + local_algo + " Local Algorithm ....")
+
         return uda
 
     def local_opt_names(self):

@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 from algorithms import Algorithms
 from rockets import launchers
 import numpy as np
-from math import log, acos, cos, sin, asin, exp, sqrt
+from math import log, acos, cos, sin, asin, exp, sqrt, pi
 
 # Avoiding scipy dependency
 def norm(x):
@@ -69,8 +69,8 @@ class TitanChemicalUDP(mga_1dsm):
             orbit_insertion=True,
             e_target=final_orbit_eccentricity,
             rp_target=final_orbit_radius,
-            eta_lb=0.01,
-            eta_ub=0.99,
+            eta_lb=1e-5,
+            eta_ub=1-1e-5,
             rp_ub=10
         )
 
@@ -85,6 +85,30 @@ class TitanChemicalUDP(mga_1dsm):
         self.constrained = constrained
 
         self.rockets = launcher
+
+    def get_bounds(self):
+        t0 = self._t0
+        tof = self._tof
+        vinf = self._vinf
+        seq = self._seq
+        # Base for all possiblities (eta encoding)
+        lb = [t0[0].mjd2000] + [0.0, 0.0, vinf[0] * 1000, self._eta_lb,
+                                1e-3] + [-2 * pi, np.nan, self._eta_lb, 1e-3] * (self.n_legs - 1)
+        ub = [t0[1].mjd2000] + [1.0, 1.0, vinf[1] * 1000, self._eta_ub,
+                                1.0 - 1e-3] + [2 * pi, self._rp_ub, self._eta_ub, 1.0 - 1e-3] * (self.n_legs - 1)
+        # Distinguishing among cases (only direct and alpha)
+        if self._tof_encoding == 'alpha':
+            lb = lb + [tof[0]]
+            ub = ub + [tof[1]]
+        elif self._tof_encoding == 'direct':
+            for i in range(self.n_legs):
+                lb[5 + 4 * i] = tof[i][0]
+                ub[5 + 4 * i] = tof[i][1]
+
+        # Setting the minimum rp/rP using the planet safe radius
+        for i, pl in enumerate(seq[1:-1]):
+            lb[7 + 4 * i] = pl.safe_radius / pl.radius
+        return (lb, ub)
 
     def _compute_dvs(self, x: List[float]) -> Tuple[
         List[float], # DVs
@@ -569,5 +593,9 @@ if __name__ == "__main__":
     2) Add another variable which asks for the moons name and if you want a moon in the first place
     3) Figure out how to consider the Saturn -> Titan. Maybe do a pl2pl in pykep, but can do it using lambert or something??
     4) Append to the lagrangian and ballistic lists with the new legs
+    5) Account for additional .03 additional propellant
+    
+    
+    
     
     """

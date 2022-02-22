@@ -7,7 +7,6 @@ from pykep import epoch_from_string
 import pygmo as pg
 import matplotlib.pyplot as plt
 from algorithms import Algorithms
-from saturn_titan import orbit2orbit_lambert
 
 def norm(x):
     return np.sqrt(sum([it * it for it in x]))

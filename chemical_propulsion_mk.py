@@ -26,7 +26,7 @@ class TitanChemicalUDP(mga_1dsm):
        5) Remove the time constraint
     """
 
-    def __init__(self, sequence, constrained=False):
+    def __init__(self, sequence, constrained=True):
         """
         The Titan problem of the trajectory gym consists in 48 different instances varying in fly-by sequence and
         the presence of a time constraint.
@@ -78,7 +78,7 @@ class TitanChemicalUDP(mga_1dsm):
         if m_final == 0:
             m_final = 1e-320
         if self.constrained:
-            retval = [-log(m_final), 1500 - m_final]
+            retval = [-log(m_final), 500 - m_final]
         else:
             retval = [-log(m_final)]
         return retval
@@ -131,7 +131,7 @@ class TitanChemicalUDP(mga_1dsm):
 
 if __name__ == "__main__":
 
-    pk.util.load_spice_kernel("de432s.bsp")
+    pk.util.load_spice_kernel('de430.bsp')
     
     # All parameters taken from: https://ssd.jpl.nasa.gov/astro_par.html
     # (and for Titan from: https://solarsystem.nasa.gov/moons/saturn-moons/titan/by-the-numbers/)
@@ -169,12 +169,13 @@ if __name__ == "__main__":
 
 
     # Defining the sequence and the problem
-    planetary_sequence = [earth, mars]
+    planetary_sequence = [earth,earth,jupiter]
     udp = TitanChemicalUDP(sequence=planetary_sequence, constrained=True)
     print(udp)
     # We solve it!!
     uda = pg.nlopt('bobyqa') 
     uda.ftol_rel = 1e-12
+    uda.ftol_abs = 1e-10
     archi = pg.archipelago(algo=uda, prob=udp, n=8, pop_size=20)
 
     archi.evolve(20)
@@ -185,18 +186,18 @@ if __name__ == "__main__":
     champion = archi.get_champions_x()[idx]
     udp.pretty(champion)
     
-    #print(pg.problem(udp).feasibility_x(champion))
-    #print(champion)
+    # print(pg.problem(udp).feasibility_x(champion))
+    # print(champion)
     
     
     
-    # mpl.rcParams['legend.fontsize'] = 6
+    mpl.rcParams['legend.fontsize'] = 6
     
-    # fig = plt.figure()
-    # axis = fig.add_subplot(projection='3d')
-    # udp.plot(champion, ax=axis)
-    # axis.legend(fontsize=6)
-    # plt.show()
+    fig = plt.figure()
+    axis = fig.add_subplot(projection='3d')
+    udp.plot(champion, ax=axis)
+    axis.legend(fontsize=6)
+    plt.show()
     
     
     """

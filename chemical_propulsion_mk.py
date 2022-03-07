@@ -3,11 +3,11 @@ from pykep.trajopt import mga_1dsm
 from pykep.planet import jpl_lp
 from pykep import epoch_from_string
 import pygmo as pg
+from pygmo import *
 
 from rockets import launchers
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-from algorithms import Algorithms
 import numpy as np
 from math import log, acos, cos, sin, asin, exp, sqrt
 
@@ -78,7 +78,7 @@ class TitanChemicalUDP(mga_1dsm):
         if m_final == 0:
             m_final = 1e-320
         if self.constrained:
-            retval = [-log(m_final), 500 - m_final]
+            retval = [-log(m_final), 1500 - m_final]
         else:
             retval = [-log(m_final)]
         return retval
@@ -169,13 +169,15 @@ if __name__ == "__main__":
 
 
     # Defining the sequence and the problem
-    planetary_sequence = [earth,earth,jupiter]
+    planetary_sequence = [earth,mars,jupiter]
     udp = TitanChemicalUDP(sequence=planetary_sequence, constrained=True)
     print(udp)
     # We solve it!!
-    uda = pg.nlopt('bobyqa') 
-    uda.ftol_rel = 1e-12
-    uda.ftol_abs = 1e-10
+    tada = pg.algorithm(compass_search())
+    # tada.ftol_rel = 1e-12
+    # tada.ftol_abs = 1e-10
+    uda = pg.algorithms.mbh(algo=tada)
+
     archi = pg.archipelago(algo=uda, prob=udp, n=8, pop_size=20)
 
     archi.evolve(20)

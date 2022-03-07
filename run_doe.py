@@ -112,7 +112,7 @@ if __name__ == "__main__":
     
     start = dt.now()
     input_filename = ""
-    output_filename = '../results/AEON_' + dt.date(start).isoformat() + '.csv'
+    output_filename = "../results/AEON_" + dt.date(start).isoformat() + ".csv"
     planet_dic = {1:earth, 2:venus, 3:mars, 4:jupiter, 5:None}
     departure_window = [] #### NEED TO FIX THIS EVENTUALLY
     target = titan

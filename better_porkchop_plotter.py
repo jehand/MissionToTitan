@@ -1,7 +1,13 @@
-# Porkchop Plotter with Stephanie's Help
-# AEON Grand Challenge
-# Spring 2022
+"""
+Porkchop Plotter
+AEON Grand Challenge
+Spring 2022
+Sarah Hopkins
 
+(Based off of code written by Stephanie Zhou)
+"""
+
+# General Imports
 import pykep as pk
 import pygmo as pg
 from datetime import datetime as dt
@@ -13,19 +19,21 @@ import matplotlib as mpl
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 
-# Use datetime to get today's date as starting point
-T0 = pk.epoch_from_string(dt.today().isoformat().replace('T',' '))
+# Launch Date: Today
+T0 = pk.epoch_from_string(dt.today().isoformat().replace('T', ' '))
+# Launch Date: specified
+# T0 =
 
 pk.util.load_spice_kernel('DE423.bsp')
 earth = pk.planet.spice(
-    'EARTH',
-    'SUN',
-    'ECLIPJ2000',
-    'NONE',
-    pk.MU_SUN,
-    pk.MU_EARTH,
-    6378000.,
-    6378000. * 1.1
+    'EARTH',                # 'target_id', body of interest
+    'SUN',                  # 'observer_id', the center of the reference frame
+    'ECLIPJ2000',           # reference frame, point of origin for calculations
+    'NONE',                 # abberations; corrections accounting for finite light speed for observations; unnecessary
+    pk.MU_SUN,              # Mu of the central body for reference frame (Mu = "standard gravitational parameter" = G*M
+    pk.MU_EARTH,            # Mu of target body
+    6378100.,               # radius of target body (meters)
+    6378100. * 1.1          # safe radius for target body (meters)
 )
 earth.name = 'EARTH'
 
@@ -35,9 +43,9 @@ venus = pk.planet.spice(
     'ECLIPJ2000',
     'NONE',
     pk.MU_SUN,
-    3.24859e14,
-    6657200.,
-    6657200. * 1.1
+    3.24859e14,             # Mu of target body, Venus
+    6051800.,               # Radius of target body (meters), Venus
+    6051800. * 1.1          # Safe radius for target body (meters), Venus
 )
 venus.name = 'VENUS'
 
@@ -47,9 +55,9 @@ mars = pk.planet.spice(
     'ECLIPJ2000',
     'NONE',
     pk.MU_SUN,
-    4.2828e13,
-    3397000.,
-    3397000 * 1.1
+    4.282837e13,            # Mu of target body, Mars
+    3389500.,               # Radius of target body (meters), Mars
+    3389500 * 1.1           # Safe radius for target body (meters), Mars
 )
 mars.name = 'MARS'
 
@@ -59,28 +67,40 @@ jupiter = pk.planet.spice(
     'ECLIPJ2000',
     'NONE',
     pk.MU_SUN,
-    1.26686534e+17,
-    71492000.,
-    643428000. * 1.02
+    1.26686534e+17,         # Mu of target body, Jupiter
+    69911000.,              # Radius of target body (meters), Jupiter
+    69911000. * 1.02        # Safe radius for target body (meters), Jupiter
 )
 jupiter.name = 'JUPITER'
 
+saturn = pk.planet.spice(
+    'Saturn BARYCENTER',
+    'SUN',
+    'ECLIPJ2000',
+    'NONE',
+    pk.MU_SUN,
+    3.7931187e+16,          # Mu of the target body, Saturn
+    58232000.,              # Radius of target body (meters), Saturn
+    58232000. * 1.02        # Safe radius for target body (meters), Saturn
+)
+saturn.name = 'SATURN'
+
 # Common parameters
-planet_sequence = [earth, mars, venus, mars, jupiter]  # start at Earth, end at Mars
-Vinf_dep = 2.  # km/s
-multi_objective = False  # single objective for min dV
-orbit_insertion = True  # insert at the end?
-e_target = 0.75  # orbit insertion eccentricity, ND
-rp_target = jupiter.safe_radius # orbit insertion radius of periapsis, m
+planet_sequence = [earth, mars, venus, mars, jupiter, saturn]  # start at Earth, end at Jupiter
+Vinf_dep = 2.                       # km/s
+multi_objective = False             # single objective for min dV
+orbit_insertion = True              # are you inserting at the end?
+e_target = 0.75                     # orbit insertion eccentricity, ND
+rp_target = jupiter.safe_radius     # orbit insertion radius of periapsis, m
 
 # Alpha Transcription MGA, no variation in departure time, single objective
-T0_u = 0  # upper bound on departure time
-tof_bounds = [50, 6000]  # window for entire trajectory
-encoding = 'alpha'
+T0_u = 0                            # upper bound on departure time
+tof_bounds = [50, 6000]             # window for entire trajectory
+encoding = 'alpha'                  # change 'alpha' to 'direct' if you want to use the direct method
 
 alpha_mga = pk.trajopt.mga(
     seq=planet_sequence,
-    t0=[T0,pk.epoch(T0.mjd2000+T0_u)],
+    t0=[T0, pk.epoch(T0.mjd2000+T0_u)],
     tof=tof_bounds,
     vinf=Vinf_dep,
     multi_objective=multi_objective,
@@ -106,7 +126,7 @@ def mga_dV(t0: type(pk.epoch(0)), tof: float):
 
     # declare problem (and tolerances)
     prob = pg.problem(mga_udp)
-    # algorithm setup; each library of solvers uses different setups. This one will demonstrate NLopt setup.
+    # algorithm setup; each library of solvers uses different setups. This one demonstrates NLopt setup.
     nl_setup = pg.nlopt("bobyqa")
     nl_setup.xtol_rel = 1e-6
     # nl_setup.maxeval = 1500
@@ -123,9 +143,9 @@ def mga_dV(t0: type(pk.epoch(0)), tof: float):
     return alpha_delta_v, best_tofs
 
 # create sweeps and storage
-n = 5
-dt_departure = np.empty([n,])
-t_step = 30.0
+n = 5                               # number of iterations
+dt_departure = np.empty([n, ])      # creates an empty matrix based on n rows
+t_step = 30.0                       # time step (days???)
 dt_arrival = np.linspace(100, 3000, n, True)
 dVs = np.empty([n, n])
 dT1 = np.empty([n, n])
@@ -136,7 +156,7 @@ for i in range(0, n):
     dt_departure[i] = t0.mjd2000
     print("Iteration {} of {}".format(i+1, n))
     for j, tf in enumerate(dt_arrival):
-        dv, ti = mga_dV(t0, tf)
+        dv, ti = mga_dV(t0, tf)        # could sub this out for function "entire trajectory" in chemical propulsion file
         dVs[i][j] = dv
         dT1[i][j] = ti[0]
         dT2[i][j] = ti[1]
@@ -146,11 +166,10 @@ for i in range(0, n):
 
 # Plot
 fig1 = plt.figure(figsize=(30, 30))
-plt.contourf(dVs, 500)
-plt.xlabel("")
-plt.ylabel("", fontsize=14)
-plt.title("")
-plt.colorbar()
-
+plt.contourf(dVs, 100)
+plt.xlabel("Launch Date from Earth")
+plt.ylabel("Arrival Date to Titan")
+plt.title("Porkchop Plot")
+plt.colorbar()      # colorbar title: Total DeltaV (km/s)
 
 plt.show()

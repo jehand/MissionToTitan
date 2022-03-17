@@ -1,5 +1,7 @@
 import pykep as pk
 from pykep.trajopt import mga_1dsm
+from pykep.core import epoch, DAY2SEC, MU_SUN, lambert_problem, propagate_lagrangian, fb_prop, AU, epoch
+from pykep.trajopt._lambert import lambert_problem_multirev
 from pykep.planet import jpl_lp
 from pykep import epoch_from_string
 import pygmo as pg
@@ -42,10 +44,10 @@ class TitanChemicalUDP(mga_1dsm):
             tof=[[20, 1500] for _ in range(len(sequence)-1)],
             vinf=[1, 10],
             add_vinf_dep=False,
-            add_vinf_arr=True,
+            add_vinf_arr=False,
             tof_encoding='direct',
             multi_objective=False,
-            orbit_insertion=True,
+            orbit_insertion=False,
             e_target=0.98531407996358,
             rp_target=80330000,
             eta_lb=0.01,
@@ -80,7 +82,7 @@ class TitanChemicalUDP(mga_1dsm):
         if self.constrained:
             retval = [-log(m_final), sum(T) - 3652.5]
         else:
-            retval = [-log(m_final), ]#[DV + sqrt(Vinfx**2 + Vinfy**2 + Vinfz**2), ]
+            retval = [DV, ]#[DV + sqrt(Vinfx**2 + Vinfy**2 + Vinfz**2), ]
         return retval
 
     def get_nic(self):
@@ -125,6 +127,90 @@ class TitanChemicalUDP(mga_1dsm):
         print("\nInitial mass:", m_initial)
         print("Final mass:", m_final)
         print("Declination:", declination)
+
+    # Plot of the trajectory
+    def plot(self, x, ax = None):
+        """
+        ax = prob.plot(x, ax=None)
+
+        - x: encoded trajectory
+        - ax: matplotlib axis where to plot. If None figure and axis will be created
+        - [out] ax: matplotlib axis where to plot
+
+        Plots the trajectory represented by a decision vector x on the 3d axis ax
+
+        Example::
+
+          ax = prob.plot(x)
+        """
+        import matplotlib as mpl
+        from mpl_toolkits.mplot3d import Axes3D
+        import matplotlib.pyplot as plt
+        from pykep.orbit_plots import plot_planet, plot_lambert, plot_kepler
+
+        if ax is None:
+            mpl.rcParams['legend.fontsize'] = 10
+            fig = plt.figure()
+            axis = fig.gca(projection='3d')
+        else:
+            axis = ax
+
+        axis.scatter(0, 0, 0, color='y')
+
+        # 1 -  we 'decode' the chromosome recording the various times of flight
+        # (days) in the list T and the cartesian components of vinf
+        T, Vinfx, Vinfy, Vinfz = self._decode_times_and_vinf(x)
+
+        # 2 - We compute the epochs and ephemerides of the planetary encounters
+        t_P = list([None] * (self.n_legs + 1))
+        r_P = list([None] * (self.n_legs + 1))
+        v_P = list([None] * (self.n_legs + 1))
+        DV = list([None] * (self.n_legs + 1))
+
+        for i, planet in enumerate(self._seq):
+            t_P[i] = epoch(x[0] + sum(T[0:i]))
+            r_P[i], v_P[i] = planet.eph(t_P[i])
+            plot_planet(planet, t0=t_P[i], color=(
+                1.0/(i+1), 0.6, 0.8), legend=True, units=AU, axes=axis, N=150)
+
+        # 3 - We start with the first leg
+        v0 = [a + b for a, b in zip(v_P[0], [Vinfx, Vinfy, Vinfz])]
+        r, v = propagate_lagrangian(
+            r_P[0], v0, x[4] * T[0] * DAY2SEC, self.common_mu)
+
+        plot_kepler(r_P[0], v0, x[4] * T[0] * DAY2SEC, self.common_mu,
+                    N=100, color='b', units=AU, axes=axis)
+
+        # Lambert arc to reach seq[1]
+        dt = (1 - x[4]) * T[0] * DAY2SEC
+        
+        l = lambert_problem_multirev(v, lambert_problem(
+            r, r_P[1], dt, self.common_mu, cw=False, max_revs=self.max_revs))
+        
+        plot_lambert(l, sol=0, color='r', units=AU, axes=axis)
+        v_end_l = l.get_v2()[0]
+        v_beg_l = l.get_v1()[0]
+
+        # 4 - And we proceed with each successive leg
+        for i in range(1, self.n_legs):
+            # Fly-by
+            v_out = fb_prop(v_end_l, v_P[i], x[
+                            7 + (i - 1) * 4] * self._seq[i].radius, x[6 + (i - 1) * 4], self._seq[i].mu_self)
+            # s/c propagation before the DSM
+            r, v = propagate_lagrangian(
+                r_P[i], v_out, x[8 + (i - 1) * 4] * T[i] * DAY2SEC, self.common_mu)
+            plot_kepler(r_P[i], v_out, x[8 + (i - 1) * 4] * T[i] * DAY2SEC,
+                        self.common_mu, N=100, color='b', units=AU, axes=axis)
+            # Lambert arc to reach Earth during (1-nu2)*T2 (second segment)
+            dt = (1 - x[8 + (i - 1) * 4]) * T[i] * DAY2SEC
+
+            l = lambert_problem_multirev(v, lambert_problem(r, r_P[i + 1], dt,
+                self.common_mu, cw=False, max_revs=self.max_revs))
+
+            plot_lambert(l, sol=0, color='r', legend=False,
+                         units=AU, N=1000, axes=axis)
+            
+        return axis
 
     def __repr__(self):
         return "AEON (Trajectory Optimisation for a Rendezvous with Titan)"
@@ -175,6 +261,7 @@ if __name__ == "__main__":
     # Defining the sequence and the problem
     planetary_sequence = [earth, venus, mars, jupiter, saturn]
     udp = TitanChemicalUDP(sequence=planetary_sequence, constrained=False)
+
 
     # We solve it!!
     sol = Algorithms(problem=udp)

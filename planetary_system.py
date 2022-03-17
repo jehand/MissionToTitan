@@ -11,7 +11,7 @@ from algorithms import Algorithms
 def norm(x):
     return np.sqrt(sum([it * it for it in x]))
 
-class saturn_to_titan:
+class PlanetToSatellite:
     """
     Decision chromosome, x = [r_start, e_start, t_apo, tof]
     
@@ -32,9 +32,11 @@ class saturn_to_titan:
             e_target (``float``)                : the eccentricity of the target orbit
             starting_planet (``pykep.planet``)  : the initial planet object
             target_planet (``pykep.planet``)    : the destination planet object
-            tof (``array(float)``)              : range of time allowed for the lambert burn given as [t0, tf], in days
+            tof (``array(float)``)              : range of time allowed from the starting planet insertion till the target planet insertion
+                                                  [t0, tf], in days
             r_start_max (``float``)             : the maximum periapsis distance allowed for the starting orbit (as a ratio of planet radius)
-            initial_insertion(``bool``)         : if true, you are also optimizing for the best initial orbit accounting for v_inf (so v_inf must be defined)
+            initial_insertion(``bool``)         : if true, you are also optimizing for the best initial orbit accounting for v_inf (so v_inf 
+                                                  must be defined)
             v_inf (``array(float)``)            : the incoming velocity vector before the initial orbit, used to find the delta_v insertion (in m/s)
             max_revs (``int``)                  : the number of revolutions allowable for the lambert solver
         """
@@ -140,26 +142,28 @@ class saturn_to_titan:
         # Printing pretty :) results
         DV, times, l, eph = self.orbit2orbit_lambert(x)
         print("Wah, so pretty...")
-        print("Saturn orbit periapsis radius =", '{0:.4g}'.format(x[0]), "Saturn radii")
-        print("Saturn orbit eccentricity =", '{0:.4g}'.format(x[1]))
+        print("Starting planet orbit periapsis radius =", '{0:.4g}'.format(x[0]), "Saturn radii")
+        print("Starting planet orbit eccentricity =", '{0:.4g}'.format(x[1]))
         
-        print("Time from Saturn orbit insertion till lambert burn =", '{0:.4g}'.format(times[0]), "days")
+        print("Time from initial planet orbit insertion till lambert burn =", '{0:.4g}'.format(times[0]), "days")
         print("Duration of lambert leg =", '{0:.4g}'.format(times[1]-times[0]), "days")
-        print("Total Time =", '{0:.4g}'.format(times[1]), "days")
-        print("Total DV =", '{0:.4g}'.format(DV/1000), "km/s")
+        print("Planetary Time =", '{0:.4g}'.format(times[1]), "days")
+        print("Planetary DV =", '{0:.4g}'.format(DV/1000), "km/s")
     
-    def plot(self, x):
+    def plot(self, x, ax=None):
         DV, times, l, eph = self.orbit2orbit_lambert(x)
         
-        fig = plt.figure()
-        ax = fig.add_subplot(projection='3d')
+        if ax == None:
+            fig = plt.figure()
+            ax = fig.add_subplot(projection='3d')
+        else:
+            ax=ax
         
         pk.orbit_plots.plot_planet(self.target_planet, t0=epoch(self.starting_time.mjd2000+times[1]), axes=ax, color="b", units=AU, legend=True)
-        pk.orbit_plots.plot_planet(self.starting_planet, t0=epoch(self.starting_time.mjd2000+times[0]), axes=ax, color="k", units=AU, legend=True)
         pk.orbit_plots.plot_lambert(l, units=AU, axes=ax, color="r", legend=True)
         pk.orbit_plots.plot_kepler(eph[0], eph[1], times[0]*DAY2SEC, mu=self.target_planet.mu_central_body, N=500, color="k", units=AU, axes=ax)
-        plt.show()    
-
+        ax.scatter(0,0,0, color="k", label=self.starting_planet.name)
+        ax.legend()
 
 if __name__ == "__main__":
     # Loading the SPICE kernels
@@ -177,7 +181,7 @@ if __name__ == "__main__":
     R_TITAN = 2574.7 * 1e3
 
     # Spice has arguments: target, observer, ref_frame, abberations, mu_central_body, mu_self, radius, safe_radius
-    saturn = pk.planet.spice('SATURN BARYCENTER', 'SATURN BARYCENTER', 'ECLIPJ2000', 'NONE', pk.MU_SUN, MU_SATURN,
+    saturn = pk.planet.spice('SATURN BARYCENTER', 'EARTH', 'ECLIPJ2000', 'NONE', pk.MU_SUN, MU_SATURN,
                              R_SATURN, R_SATURN)
     saturn.safe_radius = 1.5
     saturn.name = "SATURN"
@@ -193,7 +197,7 @@ if __name__ == "__main__":
     tof = [1, 50]
     r_start_max = 15
     
-    udp = saturn_to_titan(start_time, r_target, e_target, saturn, titan, tof, r_start_max, initial_insertion=True, 
+    udp = PlanetToSatellite(start_time, r_target, e_target, saturn, titan, tof, r_start_max, initial_insertion=True, 
                           v_inf=[2000, 6000, -3000], max_revs=5)
     prob = pg.problem(udp)
     
@@ -202,4 +206,5 @@ if __name__ == "__main__":
     champion = sol.archipelago(uda, islands=8, island_population=100)
     
     udp.pretty(champion)
-    udp.plot(champion)    
+    udp.plot(champion)
+    plt.show()

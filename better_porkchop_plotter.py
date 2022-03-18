@@ -20,9 +20,10 @@ from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 
 # Launch Date: Today
-T0 = pk.epoch_from_string(dt.today().isoformat().replace('T', ' '))
+# T0 = pk.epoch_from_string(dt.today().isoformat().replace('T', ' '))
 # Launch Date: specified
-# T0 =
+T0 = pk.epoch_from_string("2027-January-01 12:00:00")
+print(T0)
 
 pk.util.load_spice_kernel('DE423.bsp')
 earth = pk.planet.spice(
@@ -89,9 +90,9 @@ saturn.name = 'SATURN'
 planet_sequence = [earth, mars, venus, mars, jupiter, saturn]  # start at Earth, end at Jupiter
 Vinf_dep = 2.                       # km/s
 multi_objective = False             # single objective for min dV
-orbit_insertion = True              # are you inserting at the end?
+orbit_insertion = True              # are you inserting at the end? Yes (True)
 e_target = 0.75                     # orbit insertion eccentricity, ND
-rp_target = jupiter.safe_radius     # orbit insertion radius of periapsis, m
+rp_target = jupiter.safe_radius     # orbit insertion radius of periapsis, m (defined in dictionary created above)
 
 # Alpha Transcription MGA, no variation in departure time, single objective
 T0_u = 0                            # upper bound on departure time
@@ -124,11 +125,13 @@ def mga_dV(t0: type(pk.epoch(0)), tof: float):
         rp_target=rp_target,
     )
 
+# is this part of the code for the porkchop plot?
     # declare problem (and tolerances)
-    prob = pg.problem(mga_udp)
+    prob = pg.problem(mga_udp)          # mga = multi-gravity assist; udp = user datagram protocol
     # algorithm setup; each library of solvers uses different setups. This one demonstrates NLopt setup.
-    nl_setup = pg.nlopt("bobyqa")
-    nl_setup.xtol_rel = 1e-6
+    # Nlopt = nonlinear optimization
+    nl_setup = pg.nlopt("bobyqa")       # bobyqa = finds the max of a function
+    nl_setup.xtol_rel = 1e-6            # xtol_rel = a fractional tolerance on the parameters x
     # nl_setup.maxeval = 1500
     algo = pg.algorithm(nl_setup)
     # set up individuals to evolve
@@ -152,7 +155,7 @@ dT1 = np.empty([n, n])
 dT2 = np.empty([n, n])
 
 for i in range(0, n):
-    t0 = pk.epoch(T0.mjd2000 + i * t_step)
+    t0 = pk.epoch(T0.mjd2000 + i * t_step)     # "MJD2000" = modified Julian date
     dt_departure[i] = t0.mjd2000
     print("Iteration {} of {}".format(i+1, n))
     for j, tf in enumerate(dt_arrival):
@@ -166,10 +169,10 @@ for i in range(0, n):
 
 # Plot
 fig1 = plt.figure(figsize=(30, 30))
-plt.contourf(dVs, 100)
-plt.xlabel("Launch Date from Earth")
-plt.ylabel("Arrival Date to Titan")
-plt.title("Porkchop Plot")
+plt.contour(dVs)
+plt.xlabel("Earth Launch Date")
+plt.ylabel("Titan Arrival Date")
+plt.title("Earth to Titan Porkchop Plot")
 plt.colorbar()      # colorbar title: Total DeltaV (km/s)
 
 plt.show()

@@ -26,7 +26,7 @@ class TitanChemicalUDP(mga_1dsm):
        5) Remove the time constraint
     """
 
-    def __init__(self, sequence, constrained=True):
+    def __init__(self, sequence, constrained=False):
         """
         The Titan problem of the trajectory gym consists in 48 different instances varying in fly-by sequence and
         the presence of a time constraint.
@@ -39,11 +39,11 @@ class TitanChemicalUDP(mga_1dsm):
         super().__init__(
             seq=sequence,
             t0=[pk.epoch_from_string("2022-JAN-01 00:00:00.000"), pk.epoch_from_string("2030-JAN-01 00:00:00.000")],
-            tof=7305.0,
+            tof=[2000,7305.0],
             vinf=[1, 10],
             add_vinf_dep=False,
             add_vinf_arr=True,
-            tof_encoding='eta',
+            tof_encoding='alpha',
             multi_objective=False,
             orbit_insertion=True,
             e_target=.0288,
@@ -96,7 +96,7 @@ class TitanChemicalUDP(mga_1dsm):
         return retval
 
     def gradient(self, x):
-        return pg.estimate_gradient_h((lambda x: self.fitness(x), x), dx = 1e-12)
+        return pg.estimate_gradient_h(lambda x: self.fitness(x), x)
 
     def pretty(self, x):
         """
@@ -160,46 +160,47 @@ if __name__ == "__main__":
    
 
     jupiter = pk.planet.spice('JUPITER BARYCENTER', 'SUN', 'ECLIPJ2000', 'NONE', pk.MU_SUN, MU_JUPITER,
-                              R_JUPITER, R_JUPITER*1.1)
+                              R_JUPITER, R_JUPITER*1.05)
    
 
     saturn = pk.planet.spice('SATURN BARYCENTER', 'SUN', 'ECLIPJ2000', 'NONE', pk.MU_SUN, MU_SATURN,
-                             R_SATURN, R_SATURN*1.1)
+                             R_SATURN, R_SATURN*1.05)
    
 
 
     # Defining the sequence and the problem
-    planetary_sequence = [earth,mars,jupiter]
-    udp = TitanChemicalUDP(sequence=planetary_sequence, constrained=True)
+    planetary_sequence = [earth,venus,earth]
+    udp = TitanChemicalUDP(sequence=planetary_sequence, constrained=False)
     print(udp)
     # We solve it!!
-    tada = pg.algorithm(compass_search())
-    # tada.ftol_rel = 1e-12
-    # tada.ftol_abs = 1e-10
-    uda = pg.algorithms.mbh(algo=tada)
+   
 
-    archi = pg.archipelago(algo=uda, prob=udp, n=8, pop_size=20)
+    alg_glob = pg.algorithm(pg.sade())
+    alg_loc = pg.algorithm(pg.nlopt('bobyqa'))
 
-    archi.evolve(20)
-    archi.wait()
-    sols = archi.get_champions_f()
-    sols2 = [item[0] for item in sols]
-    idx = sols2.index(min(sols2))
-    champion = archi.get_champions_x()[idx]
+    pop_num = 20
+    
+    pop = pg.population(udp,pop_num)
+    pop = alg_glob.evolve(pop)
+    pop = alg_loc.evolve(pop)
+
+
+    champion = pop.champion_x
     udp.pretty(champion)
+
     
     # print(pg.problem(udp).feasibility_x(champion))
     # print(champion)
     
     
     
-    mpl.rcParams['legend.fontsize'] = 6
+    # mpl.rcParams['legend.fontsize'] = 6
     
-    fig = plt.figure()
-    axis = fig.add_subplot(projection='3d')
-    udp.plot(champion, ax=axis)
-    axis.legend(fontsize=6)
-    plt.show()
+    # fig = plt.figure()
+    # axis = fig.add_subplot(projection='3d')
+    # udp.plot(champion, ax=axis)
+    # axis.legend(fontsize=6)
+    # plt.show()
     
     
     """

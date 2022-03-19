@@ -144,6 +144,8 @@ class TrajectorySolver():
         # We solve it!!
         uda = pg.nlopt('bobyqa') 
         uda.ftol_rel = 1e-12
+        uda = pg.algorithm(uda)
+        uda.set_verbosity(100)
         archi = pg.archipelago(algo=uda, prob=interplanetary_udp, n=8, pop_size=20)
 
         archi.evolve(20)
@@ -202,6 +204,8 @@ class TrajectorySolver():
         # We solve it!!
         uda = pg.nlopt('bobyqa') 
         uda.ftol_rel = 1e-12
+        uda = pg.algorithm(uda)
+        uda.set_verbosity(100)
         archi = pg.archipelago(algo=uda, prob=planetary_udp, n=8, pop_size=20)
 
         archi.evolve(20)
@@ -368,7 +372,7 @@ if __name__ == "__main__":
     spice_kernels()
     venus, earth, mars, jupiter, saturn, titan = load_spice()
     
-    sequence = [earth, venus, jupiter, saturn]
+    sequence = [earth, saturn]
     target_satellite = titan
     departure_dates = []
     target_orbit = [titan.radius * 2, 0.1]
@@ -378,6 +382,9 @@ if __name__ == "__main__":
     champ_inter, champ_plan = trajectory.entire_trajectory(sequence=sequence, departure_dates=departure_dates,
                                                            target_satellite=titan,
                                                            target_orbit=target_orbit)
+
+    champ_inter = [10790.386060785193, 0.06204046642376808, 0.561252533215833, 10000.0, 0.01, 1500.0]
+    champ_plan = [15.0, 0.17972278837262365, 0.09095129656224789, 21.57452055244928]
     
     trajectory.pretty(champ_inter, champ_plan)
     trajectory.plot(champ_inter, champ_plan)

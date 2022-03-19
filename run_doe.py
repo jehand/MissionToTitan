@@ -83,7 +83,7 @@ def main(doe_filename, planet_dic, out_filename, departure_window, target_satell
         writer.writeheader() 
         
         # Get all the sequences
-        sequences = [[earth, venus, mars]]#extract_seqs(doe_filename, planet_dic, append_seq, start_seq, end_seq)
+        sequences = [[earth, venus, saturn]]#extract_seqs(doe_filename, planet_dic, append_seq, start_seq, end_seq)
         cases = len(sequences)
 
         all_cases = list(zip(sequences, repeat(departure_window), repeat(target_satellite), 
@@ -103,11 +103,11 @@ if __name__ == "__main__":
     #spice_kernels()
     #venus, earth, mars, jupiter, saturn, titan = load_spice()
     venus = load_interp("planets/VENUS1990-2050_1.pkl")
-    earth = load_interp("planets/EARTH1990-2050_1.pkl")
+    earth = load_interp("planets/EARTH1990-2050_0.1.pkl")
     mars = load_interp("planets/MARS1990-2050_1.pkl")
     jupiter = load_interp("planets/JUPITER1990-2050_1.pkl")
-    saturn = load_interp("planets/SATURN1990-2050_1.pkl")
-    titan = load_interp("planets/TITAN1990-2050_1.pkl")
+    saturn = load_interp("planets/SATURN1990-2050_0.1.pkl")
+    titan = load_interp("planets/TITAN1990-2050_0.1.pkl")
     print("Imported Interpolations...")
     
     start = dt.now()
@@ -121,5 +121,5 @@ if __name__ == "__main__":
     x = traj_analysis([[earth,saturn], departure_window, titan, target_orbit, 1])
     print(x)
     
-    #main(input_filename, planet_dic, output_filename, departure_window, target, target_orbit, 
+    # main(input_filename, planet_dic, output_filename, departure_window, target, target_orbit, 
     #     start, append_seq=True, start_seq=earth, end_seq=saturn)

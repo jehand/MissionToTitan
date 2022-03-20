@@ -2,13 +2,12 @@ from multiprocessing import Pool, cpu_count, Process
 from csv import DictWriter
 import numpy as np
 import os
-from chemical_propulsion2 import TitanChemicalUDP
-from planetary_system import PlanetToSatellite
+from udps.chemical_propulsion2 import TitanChemicalUDP
+from udps.planetary_system import PlanetToSatellite
 from trajectory_solver import TrajectorySolver, load_spice, spice_kernels
 from itertools import repeat
 from datetime import datetime as dt
 import pykep as pk
-import pickle
 
 """
 Two main functions:
@@ -131,16 +130,9 @@ def main(doe_filename, planet_dic, out_filename, departure_window, target_satell
 if __name__ == "__main__":
     spice_kernels()
     venus, earth, mars, jupiter, saturn, titan = load_spice()
-    # venus = load_interp("planets/VENUS2022-2050_1.pkl")
-    # earth = load_interp("planets/EARTH2022-2050_1.pkl")
-    # mars = load_interp("planets/MARS2022-2050_1.pkl")
-    # jupiter = load_interp("planets/JUPITER2022-2050_1.pkl")
-    # saturn = load_interp("planets/SATURN2022-2050_1.pkl")
-    # titan = load_interp("planets/TITAN2022-2050_0.1.pkl")
-    # print("Imported Interpolations...")
     
     start = dt.now()
-    input_filename = "test.csv"
+    input_filename = "examples_tests/test.csv"
     output_filename = "results/AEON_" + dt.date(start).isoformat() + ".csv"
     planet_dic = {1:earth, 2:venus, 3:mars, 4:jupiter, 5:None}
     departure_window = [] #### NEED TO FIX THIS EVENTUALLY

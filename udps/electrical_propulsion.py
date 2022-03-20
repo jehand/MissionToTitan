@@ -1,16 +1,19 @@
 import pykep as pk
-from pykep.trajopt import lt_margo, mga_lt_nep, mr_lt_nep, launchers
-from pykep.planet import jpl_lp
+from pykep.trajopt import lt_margo, mga_lt_nep, mr_lt_nep
 from pykep.core import epoch, AU
-from pykep import epoch_from_string
 from pykep.sims_flanagan import sc_state
-
-from algorithms import Algorithms
 import matplotlib.pyplot as plt
 import pygmo as pg
-
 import numpy as np
 from math import log, acos, cos, sin, asin, exp, pi, sqrt
+
+try:
+    from algorithms import Algorithms
+except:
+    import sys
+    sys.path.append(sys.path[0]+"/udps")
+    from algorithms import Algorithms
+
 
 # Avoiding scipy dependency
 def norm(x):

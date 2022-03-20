@@ -1,13 +1,17 @@
-from matplotlib import projections
 import numpy as np
 import pykep as pk
 from pykep.trajopt._lambert import lambert_problem_multirev
 from pykep.core import epoch, DAY2SEC, MU_SUN, lambert_problem, AU, epoch, SEC2DAY, propagate_lagrangian
-from pykep import epoch_from_string
 import pygmo as pg
 import matplotlib.pyplot as plt
-from algorithms import Algorithms
 
+try:
+    from algorithms import Algorithms
+except:
+    import sys
+    sys.path.append(sys.path[0]+"/udps")
+    from algorithms import Algorithms
+    
 def norm(x):
     return np.sqrt(sum([it * it for it in x]))
 
@@ -191,7 +195,7 @@ if __name__ == "__main__":
                             R_TITAN, R_TITAN)
     titan.name = "TITAN"
     
-    start_time = epoch_from_string("2021-DEC-28 11:58:50.816")
+    start_time = pk.epoch_from_string("2021-DEC-28 11:58:50.816")
     r_target = titan.radius * 2
     e_target = 0.1
     tof = [1, 50]

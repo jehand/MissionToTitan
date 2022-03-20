@@ -2,16 +2,18 @@ import pykep as pk
 from pykep.trajopt import mga_1dsm
 from pykep.core import epoch, DAY2SEC, MU_SUN, lambert_problem, propagate_lagrangian, fb_prop, AU, epoch
 from pykep.trajopt._lambert import lambert_problem_multirev
-from pykep.planet import jpl_lp
-from pykep import epoch_from_string
 import pygmo as pg
-
-from rockets import launchers
-import matplotlib as mpl
-import matplotlib.pyplot as plt
-from algorithms import Algorithms
 import numpy as np
 from math import log, acos, cos, sin, asin, exp, sqrt
+
+try:
+    from rockets import launchers
+    from algorithms import Algorithms
+except:
+    import sys
+    sys.path.append(sys.path[0]+"/udps")
+    from rockets import launchers
+    from algorithms import Algorithms
 
 
 class TitanChemicalUDP(mga_1dsm):
@@ -144,7 +146,6 @@ class TitanChemicalUDP(mga_1dsm):
           ax = prob.plot(x)
         """
         import matplotlib as mpl
-        from mpl_toolkits.mplot3d import Axes3D
         import matplotlib.pyplot as plt
         from pykep.orbit_plots import plot_planet, plot_lambert, plot_kepler
 

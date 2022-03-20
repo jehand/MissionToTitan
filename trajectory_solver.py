@@ -2,9 +2,9 @@ import numpy as np
 import pykep as pk
 import pygmo as pg
 from pykep.core import epoch, DAY2YEAR
-from  chemical_propulsion2 import TitanChemicalUDP
-from algorithms import Algorithms
-from planetary_system import PlanetToSatellite
+from udps.chemical_propulsion2 import TitanChemicalUDP
+from udps.algorithms import Algorithms
+from udps.planetary_system import PlanetToSatellite
 import matplotlib.pyplot as plt
 import matplotlib
 import os.path

@@ -1,4 +1,5 @@
 *.bsp
-.ipynb_checkpoints
-.vs
-__pycache__
+.ipynb_checkpoints/
+.vs/
+__pycache__/
+results/

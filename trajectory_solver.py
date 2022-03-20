@@ -54,14 +54,14 @@ def spice_kernels():
         r2 = requests.get(url2, allow_redirects=True)
         open('de432s.bsp', 'wb').write(r2.content)
 
-        print("Downloaded de432s.bsp!")
+        #print("Downloaded de432s.bsp!")
 
-    else:
-        print("File is already downloaded!")
+    #else:
+        #print("File is already downloaded!")
 
     pk.util.load_spice_kernel("de432s.bsp")
     pk.util.load_spice_kernel("sat441.bsp")
-    print("Imported SPICE kernels!")
+    #print("Imported SPICE kernels!")
 
 def load_spice():
     # All parameters taken from: https://ssd.jpl.nasa.gov/astro_par.html
@@ -145,16 +145,27 @@ class TrajectorySolver():
         uda = pg.nlopt('bobyqa') 
         uda.ftol_rel = 1e-12
         uda = pg.algorithm(uda)
-        uda.set_verbosity(100)
-        archi = pg.archipelago(algo=uda, prob=interplanetary_udp, n=8, pop_size=20)
+        # #uda.set_verbosity(100)
+        # archi = pg.archipelago(algo=uda, prob=interplanetary_udp, n=8, pop_size=20)
 
-        archi.evolve(20)
-        archi.wait()
-        sols = archi.get_champions_f()
-        sols2 = [item[0] for item in sols]
-        idx = sols2.index(min(sols2))
-        DV = sols2[idx]
-        champion_interplanetary = archi.get_champions_x()[idx]
+        # archi.evolve(20)
+        # archi.wait()
+        # sols = archi.get_champions_f()
+        # sols2 = [item[0] for item in sols]
+        # idx = sols2.index(min(sols2))
+        # DV = sols2[idx]
+        # champion_interplanetary = archi.get_champions_x()[idx]
+        alg_glob = pg.algorithm(pg.sade())
+        #alg_loc = pg.algorithm(pg.nlopt('bobyqa'))
+
+        pop_num = 20
+
+        pop = pg.population(interplanetary_udp,pop_num)
+        pop = alg_glob.evolve(pop)
+        #pop = alg_loc.evolve(pop)
+
+        champion_interplanetary = pop.champion_x
+        DV = pop.champion_f
         
         return champion_interplanetary, DV
     
@@ -202,19 +213,33 @@ class TrajectorySolver():
         
         self.planetary_udp = planetary_udp
         # We solve it!!
-        uda = pg.nlopt('bobyqa') 
+        uda = pg.nlopt('bobyqa')
         uda.ftol_rel = 1e-12
         uda = pg.algorithm(uda)
-        uda.set_verbosity(100)
-        archi = pg.archipelago(algo=uda, prob=planetary_udp, n=8, pop_size=20)
+        #uda.set_verbosity(100)
+        #archi = pg.archipelago(algo=uda, prob=planetary_udp, n=8, pop_size=20)
 
-        archi.evolve(20)
-        archi.wait()
-        sols = archi.get_champions_f()
-        sols2 = [item[0] for item in sols]
-        idx = sols2.index(min(sols2))
-        DV = sols2[idx]
-        champion_planetary = archi.get_champions_x()[idx]
+        #archi.evolve(20)
+        #archi.wait()
+        # uda.evolve()
+        #sols = archi.get_champions_f()
+        # sols = uda.get_champions_f()
+        # sols2 = [item[0] for item in sols]
+        # idx = sols2.index(min(sols2))
+        # DV = sols2[idx]
+        # champion_planetary = archi.get_champions_x()[idx]
+        alg_glob = pg.algorithm(pg.sade())
+        #alg_loc = pg.algorithm(pg.nlopt('bobyqa'))
+
+        pop_num = 20
+
+        pop = pg.population(planetary_udp,pop_num)
+        pop = alg_glob.evolve(pop)
+        #pop = alg_loc.evolve(pop)
+
+
+        champion_planetary = pop.champion_x
+        DV = pop.champion_f
         
         return champion_planetary, DV
         

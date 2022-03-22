@@ -2,7 +2,7 @@ import os
 import numpy as np
 import pykep as pk
 
-from multiprocessing import Pool, cpu_count, Process
+from multiprocessing import Pool, cpu_count
 from csv import DictWriter, DictReader
 from udps.chemical_propulsion2 import TitanChemicalUDP
 from udps.planetary_system import PlanetToSatellite

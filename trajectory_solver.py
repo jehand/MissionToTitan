@@ -8,37 +8,41 @@ from udps.planetary_system import PlanetToSatellite
 import matplotlib.pyplot as plt
 import matplotlib
 import os.path
-
-matplotlib.use('Qt5Agg')
-from PyQt5 import QtWidgets
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from display_style import bcolors
 
+try:
+    matplotlib.use('Qt5Agg')
+    from PyQt5 import QtWidgets
+    from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+    from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
+    QT5 = True
+except:
+    QT5 = False
 
-class ScrollableWindow(QtWidgets.QMainWindow):
-    def __init__(self, fig):
-        self.qapp = QtWidgets.QApplication([])
+if QT5:
+    class ScrollableWindow(QtWidgets.QMainWindow):
+        def __init__(self, fig):
+            self.qapp = QtWidgets.QApplication([])
 
-        QtWidgets.QMainWindow.__init__(self)
-        self.widget = QtWidgets.QWidget()
-        self.setCentralWidget(self.widget)
-        self.widget.setLayout(QtWidgets.QVBoxLayout())
-        self.widget.layout().setContentsMargins(0,0,0,0)
-        self.widget.layout().setSpacing(0)
+            QtWidgets.QMainWindow.__init__(self)
+            self.widget = QtWidgets.QWidget()
+            self.setCentralWidget(self.widget)
+            self.widget.setLayout(QtWidgets.QVBoxLayout())
+            self.widget.layout().setContentsMargins(0,0,0,0)
+            self.widget.layout().setSpacing(0)
 
-        self.fig = fig
-        self.canvas = FigureCanvas(self.fig)
-        self.canvas.draw()
-        self.scroll = QtWidgets.QScrollArea(self.widget)
-        self.scroll.setWidget(self.canvas)
+            self.fig = fig
+            self.canvas = FigureCanvas(self.fig)
+            self.canvas.draw()
+            self.scroll = QtWidgets.QScrollArea(self.widget)
+            self.scroll.setWidget(self.canvas)
 
-        self.nav = NavigationToolbar(self.canvas, self.widget)
-        self.widget.layout().addWidget(self.nav)
-        self.widget.layout().addWidget(self.scroll)
+            self.nav = NavigationToolbar(self.canvas, self.widget)
+            self.widget.layout().addWidget(self.nav)
+            self.widget.layout().addWidget(self.scroll)
 
-        self.showMaximized()
-        exit(self.qapp.exec_()) 
+            self.showMaximized()
+            exit(self.qapp.exec_()) 
 
 def spice_kernels():
     # Downloading the spice kernel
@@ -55,14 +59,12 @@ def spice_kernels():
         r2 = requests.get(url2, allow_redirects=True)
         open('de432s.bsp', 'wb').write(r2.content)
 
-        #print("Downloaded de432s.bsp!")
-
-    #else:
-        #print("File is already downloaded!")
-
-    pk.util.load_spice_kernel("de432s.bsp")
-    pk.util.load_spice_kernel("sat441.bsp")
-    #print("Imported SPICE kernels!")
+    try:
+        pk.util.load_spice_kernel("de432s.bsp")
+        pk.util.load_spice_kernel("sat441.bsp")
+    except:
+        pk.util.load_spice_kernel("../de432s.bsp")
+        pk.util.load_spice_kernel("../sat441.bsp")       
 
 def load_spice():
     # All parameters taken from: https://ssd.jpl.nasa.gov/astro_par.html
@@ -404,7 +406,10 @@ class TrajectorySolver():
             ax6.get_legend().remove()
         
         fig.subplots_adjust(wspace=0.1, hspace=0.1)
-        ScrollableWindow(fig)
+        if QT5:
+            ScrollableWindow(fig)
+        else:
+            plt.show()
         
         
 if __name__ == "__main__":

@@ -126,9 +126,10 @@ class TitanChemicalUDP(mga_1dsm):
         DV = super().fitness(x)[0]
         DV = DV + 165.  # losses for 3 swgbys + insertion
         m_final = m_initial * exp(-DV / (Isp * g0))
-        print("\nInitial mass:", m_initial)
-        print("Final mass:", m_final)
-        print("Declination:", declination)
+        print("\nInitial mass: {0:.4g}".format(m_initial[0]), "kg")
+        print("Final mass: {0:.4g}".format(m_final[0]), "kg")
+        print("Declination: {0:.4g}".format(declination), "degrees")
+        print("Interplanetary DV: {0:.4g}".format(DV/1000), "km/s")
 
     # Plot of the trajectory
     def plot(self, x, ax = None):

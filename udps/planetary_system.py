@@ -140,19 +140,18 @@ class PlanetToSatellite:
         return pg.estimate_gradient((lambda x: self.fitness(x), x), dx = 1e-8)
 
     def get_name(self):
-        return "Saturn to Titan"
+        return "Planet to Satellite"
     
     def pretty(self, x):
         # Printing pretty :) results
         DV, times, l, eph = self.orbit2orbit_lambert(x)
-        print("Wah, so pretty...")
-        print("Starting planet orbit periapsis radius =", '{0:.4g}'.format(x[0]), "Saturn radii")
-        print("Starting planet orbit eccentricity =", '{0:.4g}'.format(x[1]))
+        print("Starting planet orbit periapsis radius:", '{0:.4g}'.format(x[0]), f"{self.starting_planet.name} radii")
+        print("Starting planet orbit eccentricity:", '{0:.4g}'.format(x[1]))
         
-        print("Time from initial planet orbit insertion till lambert burn =", '{0:.4g}'.format(times[0]), "days")
-        print("Duration of lambert leg =", '{0:.4g}'.format(times[1]-times[0]), "days")
-        print("Planetary Time =", '{0:.4g}'.format(times[1]), "days")
-        print("Planetary DV =", '{0:.4g}'.format(DV/1000), "km/s")
+        print("Time from initial planet orbit insertion till lambert burn:", '{0:.4g}'.format(times[0]), "days")
+        print("Duration of lambert leg:", '{0:.4g}'.format(times[1]-times[0]), "days")
+        print("Planetary Time:", '{0:.4g}'.format(times[1]), "days")
+        print("Planetary DV:", '{0:.4g}'.format(DV/1000), "km/s")
     
     def plot(self, x, ax=None):
         DV, times, l, eph = self.orbit2orbit_lambert(x)

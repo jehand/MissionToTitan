@@ -13,6 +13,7 @@ matplotlib.use('Qt5Agg')
 from PyQt5 import QtWidgets
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
+from display_style import bcolors
 
 
 class ScrollableWindow(QtWidgets.QMainWindow):
@@ -122,6 +123,35 @@ class TrajectorySolver():
         self.interplanetary_problem = interplanetary_udp
         self.planetary_problem = planetary_udp
 
+    def define_interplanetary(self, sequence):
+        """
+        This is used to define the interplanetary udp with respect to their sequence
+
+        Args:
+            sequence (``array(pykep.planet)``)       : the sequence of planets to visit in the interplanetary phase
+        """
+        return self.interplanetary_problem(sequence)
+
+    def define_planetary(self, starting_planet, target_satellite, starting_time, target_orbit, v=None):
+        """
+        This is used to define the planetary udp
+
+        Args:
+            starting_planet (``pykep.planet``)  : the starting planet
+            target_satellite (``pykep.planet``) : the target destination
+            starting_time (``pykep.epoch``)     : the starting time at which the spacecraft is at periapsis around the starting planet
+            target_orbit (``array(double)``)    : the target orbit desired at the satellite as [periapsis radius, eccentricity]
+            v (``array(double)``)            : defines the initial velocity of the spacecraft before the starting orbit; defaults to None to 
+                                                  say there's no incoming velocity
+        """
+        
+        if v is None:
+            return self.planetary_problem(starting_time, target_orbit[0], target_orbit[1], starting_planet, target_satellite, 
+                                                tof=[10,100], r_start_max=15, initial_insertion=True, v_inf=[0,0,0], max_revs=5)
+        else:
+            return self.planetary_problem(starting_time, target_orbit[0], target_orbit[1], starting_planet, target_satellite, 
+                                                tof=[10,100], r_start_max=15, initial_insertion=True, v_inf=v, max_revs=5)
+
     def interplanetary_trajectory(self, sequence, departure_range):
         """
         This class is used to solve for a single trajectory or to run a DoE on the sequences. 
@@ -133,10 +163,10 @@ class TrajectorySolver():
                                                     the sequence)
             departure_range (``array(pykep.epoch)``) : the range of dates for which to begin the interplanetary stage
             target_orbit (``array(double)``)         : the final orbit desired at the satellite given as [r_target, e_target] where 
-                                                    r_target is in m.
+                                                    r_target is in m
         """
         # Define the interplanetary problem
-        interplanetary_udp = self.interplanetary_problem(sequence) ##### Need to add departure date etc.
+        interplanetary_udp = self.define_interplanetary(sequence) ##### Need to add departure date etc.
         self.interplanetary_udp = interplanetary_udp
         self.departure_range = departure_range
         self.sequence = sequence
@@ -175,7 +205,7 @@ class TrajectorySolver():
 
         Args:
             final_planet (``pykep.planet``)             : the final planet in the interplanetary sequence
-            champion_interplanetary (``array(double)``) : the decision chromosome for the interplanetary phase.
+            champion_interplanetary (``array(double)``) : the decision chromosome for the interplanetary phase
         """
         
         # Take the decision chromosome from the interplanetary phase as inputs for the Saturnian system
@@ -189,29 +219,24 @@ class TrajectorySolver():
         _, v_P_solarsystem = final_planet.eph(t)
         v_sc = [a-b for a,b in zip(v_sc_solarsystem, v_P_solarsystem)] # sc velocity relative to last planet
         
-        return v_sc, t        
+        return v_sc, t
     
     def planetary_trajectory(self, starting_planet, target_satellite, starting_time, target_orbit, v_sc=None):
         """
         Calculates the planetary trajectory.
 
         Args:
-            starting_planet (``pykep.planet``)  : the starting planet.
-            target_satellite (``pykep.planet``) : the target destination.
-            starting_time (``pykep.epoch``)     : the starting time at which the spacecraft is at periapsis around the starting planet.
+            starting_planet (``pykep.planet``)  : the starting planet
+            target_satellite (``pykep.planet``) : the target destination
+            starting_time (``pykep.epoch``)     : the starting time at which the spacecraft is at periapsis around the starting planet
             target_orbit (``array(double)``)    : the target orbit desired at the satellite as [periapsis radius, eccentricity]
             v_sc (``array(double)``)            : defines the initial velocity of the spacecraft before the starting orbit; defaults to None to 
-                                                  say there's no incoming velocity.
+                                                  say there's no incoming velocity
         """
         # Solve the destination planet system to reach the satellite
-        if v_sc is None:
-            planetary_udp = self.planetary_problem(starting_time, target_orbit[0], target_orbit[1], starting_planet, target_satellite, 
-                                                tof=[10,100], r_start_max=15, initial_insertion=False, v_inf=v_sc, max_revs=5)
-        else:
-            planetary_udp = self.planetary_problem(starting_time, target_orbit[0], target_orbit[1], starting_planet, target_satellite, 
-                                                tof=[10,100], r_start_max=15, initial_insertion=True, v_inf=v_sc, max_revs=5)
-        
+        planetary_udp = self.define_planetary(starting_planet, target_satellite, starting_time, target_orbit, v_sc)            
         self.planetary_udp = planetary_udp
+        
         # We solve it!!
         uda = pg.nlopt('bobyqa')
         uda.ftol_rel = 1e-12
@@ -242,6 +267,42 @@ class TrajectorySolver():
         DV = pop.champion_f
         
         return champion_planetary, DV
+    
+    def entire_trajectory(self, sequence, departure_dates, target_satellite, target_orbit):
+        """
+        Runs an entire trajectory including an interplanetary and planetary phase
+
+        Args:
+            sequence (``array(pykep.planet)``): the interplanetary flyby sequence
+            departure_dates (``array(pykep.epoch)``): the range of dates within which to launch [lower bound, upper bound]
+            target_satellite (``pykep.planet``): pykep.planet object for the destination satellite, e.g. Titan
+            target_orbit (``array(float)``): target orbit at the destiniation as [periapsis radius, eccentricity]
+        """
+        champ_inter, _ = self.interplanetary_trajectory(sequence=sequence, departure_range=departure_dates)
+        v_sc, start_time = self.compute_final_vinf(sequence[-1], champ_inter)
+        champ_plan, _ = self.planetary_trajectory(sequence[-1], target_satellite, start_time, target_orbit, v_sc)
+        
+        return champ_inter, champ_plan
+    
+    def get_results(self, champ_interplanetary, champ_planetary):
+        """
+        Get the results for the entire journey.
+
+        Args:
+            champ_interplanetary (``array``) : the solution decision chromosome for the interplanetary sequence
+            champ_planetary (``array``)      : the solution decision chromosome for the planetary sequence
+        """
+        # Give overall results for both legs
+        DV = self.interplanetary_udp.fitness(champ_interplanetary)[0]
+        DV += self.planetary_udp.fitness(champ_planetary)[0]
+        
+        t_departure = champ_interplanetary[0]
+                
+        _, _, T, _, _ = self.interplanetary_udp._compute_dvs(champ_interplanetary)
+        tof = sum(T) + champ_planetary[-1]
+        t = tof + t_departure
+        
+        return DV, epoch(t_departure), epoch(t), [sum(T), champ_planetary[-1]], tof
         
     def pretty(self, champion_interplanetary=None, champion_planetary=None):
         """
@@ -254,29 +315,29 @@ class TrajectorySolver():
         
         # Write out pretty results
         if list(champion_interplanetary):
-            print("==================================")
-            print("Interplanetary Stage:")
-            print("==================================")
+            print(f"{bcolors.BOLD}{bcolors.OKBLUE}=================================={bcolors.ENDC}")
+            print(f"{bcolors.BOLD}{bcolors.OKBLUE}Interplanetary Stage:{bcolors.ENDC}")
+            print(f"{bcolors.BOLD}{bcolors.OKBLUE}=================================={bcolors.ENDC}")
             self.interplanetary_udp.pretty(champion_interplanetary)
             print("")
         
         if list(champion_planetary):
-            print("==================================")
-            print("Planetary Stage:")
-            print("==================================")
+            print(f"{bcolors.BOLD}{bcolors.OKBLUE}=================================={bcolors.ENDC}")
+            print(f"{bcolors.BOLD}{bcolors.OKBLUE}Planetary Stage:{bcolors.ENDC}")
+            print(f"{bcolors.BOLD}{bcolors.OKBLUE}=================================={bcolors.ENDC}")
             self.planetary_udp.pretty(champion_planetary)
             print("")
             
-        if list(champion_interplanetary) and list(champion_interplanetary): # if we are doing the entire trajectory
-            print("==================================")
-            print("Total mission:")
-            print("==================================")
+        if list(champion_interplanetary) and list(champion_planetary): # if we are doing the entire trajectory
+            print(f"{bcolors.BOLD}{bcolors.WARNING}=================================={bcolors.ENDC}")
+            print(f"{bcolors.BOLD}{bcolors.WARNING}Total mission:{bcolors.ENDC}")
+            print(f"{bcolors.BOLD}{bcolors.WARNING}=================================={bcolors.ENDC}")
             DV, t_departure, t_arrival, _, T = self.get_results(champion_interplanetary, champion_planetary)
             
-            print("Total DV = {0:.4g}".format(DV/1000), "km/s")
-            print("Departure Date = {}".format(t_departure))
-            print("Total Flight Time = {0:.4g}".format(T*DAY2YEAR), "years ({0:.7g}".format(T), "days)")
-            print("Arrival Date = {}".format(t_arrival))
+            print("Total DV: {0:.4g}".format(DV/1000), "km/s")
+            print("Departure Date: {} ({} mjd2000)".format(t_departure, t_departure.mjd2000))
+            print("Total Flight Time: {0:.4g}".format(T*DAY2YEAR), "years ({0:.7g}".format(T), "days)")
+            print("Arrival Date: {} ({} mjd2000)".format(t_arrival, t_arrival.mjd2000))
             print("\n")
     
     def plot(self, champ_interplanetary=None, champ_planetary=None):
@@ -299,6 +360,28 @@ class TrajectorySolver():
             self.planetary_udp.plot(champ_planetary)
             
         else: # plot both together
+            ax1 = fig.add_subplot(3, 2, 1, projection='3d')
+            ax1.set_title("Interplanetary Sequence", fontsize=18)
+            ax1.view_init(elev=90, azim=0)
+            ax1.axes.set_xlim3d(left=-2, right=2) 
+            ax1.axes.set_ylim3d(bottom=-2, top=2) 
+            ax1.axes.set_zlim3d(bottom=-1, top=1) 
+            ax1.set_zticks([])
+            self.interplanetary_udp.plot(champ_interplanetary, ax=ax1)
+            ax1.legend(loc='center left', bbox_to_anchor=(1.07, 0.5))
+
+            ax3 = fig.add_subplot(3, 2, 3, projection='3d')
+            ax3.view_init(elev=90, azim=0)
+            ax3.set_zticks([])
+            self.interplanetary_udp.plot(champ_interplanetary, ax=ax3)
+            ax3.get_legend().remove()
+
+            ax5 = fig.add_subplot(3, 2, 5, projection='3d')
+            ax5.view_init(elev=0, azim=0)
+            ax5.set_xticks([])
+            self.interplanetary_udp.plot(champ_interplanetary, ax=ax5)
+            ax5.get_legend().remove()
+            
             ax2 = fig.add_subplot(3, 2, 2, projection='3d')
             ax2.set_title("Planetary Sequence", fontsize=18)
             self.planetary_udp.plot(champ_planetary, ax=ax2)
@@ -306,90 +389,22 @@ class TrajectorySolver():
             
             ax4 = fig.add_subplot(3, 2, 4, projection="3d")
             ax4.view_init(elev=90, azim=0)
+            ax4.set_zticks([])
+            ax4.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
+            ax4.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
             self.planetary_udp.plot(champ_planetary, ax=ax4)
             ax4.get_legend().remove()
             
             ax6 = fig.add_subplot(3, 2, 6, projection="3d")
             ax6.view_init(elev=0, azim=0)
+            ax6.set_xticks([])
+            ax6.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
+            ax6.ticklabel_format(style='sci', axis='z', scilimits=(0,0))
             self.planetary_udp.plot(champ_planetary, ax=ax6)
             ax6.get_legend().remove()
-
-            ax1 = fig.add_subplot(3, 2, 1, projection='3d')
-            ax1.set_title("Interplanetary Sequence", fontsize=18)
-            self.interplanetary_udp.plot(champ_interplanetary, ax=ax1)
-            ax1.legend(loc='center left', bbox_to_anchor=(1.07, 0.5))
-
-            ax3 = fig.add_subplot(3, 2, 3, projection='3d')
-            ax3.view_init(elev=90, azim=0)
-            self.interplanetary_udp.plot(champ_interplanetary, ax=ax3)
-            ax3.get_legend().remove()
-
-            ax5 = fig.add_subplot(3, 2, 5, projection='3d')
-            ax5.view_init(elev=0, azim=0)
-            self.interplanetary_udp.plot(champ_interplanetary, ax=ax5)
-            ax5.get_legend().remove()
         
-        #fig.subplots_adjust(wspace=0, hspace=0)
+        fig.subplots_adjust(wspace=0.1, hspace=0.1)
         ScrollableWindow(fig)
-        #plt.show()
-        
-    def get_results(self, champ_interplanetary, champ_planetary):
-        """
-        Get the results for the entire journey.
-
-        Args:
-            champ_interplanetary (``array``) : the solution decision chromosome for the interplanetary sequence
-            champ_planetary (``array``)      : the solution decision chromosome for the planetary sequence
-        """
-        # Give overall results for both legs
-        DV = self.interplanetary_udp.fitness(champ_interplanetary)[0]
-        DV += self.planetary_udp.fitness(champ_planetary)[0]
-        
-        t_departure = champ_interplanetary[0]
-                
-        _, _, T, _, _ = self.interplanetary_udp._compute_dvs(champ_interplanetary)
-        tof = sum(T) + champ_planetary[-1]
-        t = tof + t_departure
-        
-        return DV, epoch(t_departure), epoch(t), [sum(T), champ_planetary[-1]], tof
-
-    def entire_trajectory(self, sequence, departure_dates, target_satellite, target_orbit):
-        champ_inter, _ = self.interplanetary_trajectory(sequence=sequence, departure_range=departure_dates)
-        v_sc, start_time = self.compute_final_vinf(sequence[-1], champ_inter)
-        champ_plan, _ = self.planetary_trajectory(sequence[-1], target_satellite, start_time, target_orbit, v_sc)
-        
-        return champ_inter, champ_plan
-
-    # def extract_seq_from_csv(self, filepath, planets, starting_planet, ending_planet):
-    #     """
-    #     Converts a .csv file with sequences given as a pattern (underneath the column name Pattern) into 
-    #     an array of pykep.planet objects.
-        
-    #     E.g. 
-    #     planets = {1 : earth, 2 : venus, 3 : saturn}
-    #     starting_planet = mercury
-    #     ending_planet = uranus
-    #     Given a pattern 213 from the .csv, the outcome is a mercury --> venus --> earth --> saturn --> uranus
-
-    #     Args:
-    #         filepath (``string``)               : the filepath of the .csv with pattern information
-    #         planets (``dic(int:pykep.planet)``) : a dictionary mapping the numbers in the pattern to planets.
-    #         starting_planet (``pykep.planet``)  : the initial planet in the sequence (always appended to the front of pattern)
-    #         ending_planet (``pykep.planet``)    : the final planet in the sequence (always appended to the end of pattern)
-    #     """
-        
-    #     patterns = np.genfromtxt(filepath, delimiter=",", names=True)["Pattern"]
-        
-        
-    # def run_doe(self, DoE_filepath, output_filepath, interplanetary_planets, 
-    #             departure_dates, target_satellite, target_orbit):
-        
-    #     # Each leg:
-    #     champ_inter, inter_DV = self.interplanetary_trajectory(sequence=interplanetary_sequence, departure_range=departure_dates)
-    #     v_sc, start_time = self.compute_final_vinf(interplanetary_sequence[-1], champ_inter)
-    #     champ_plan, plan_DV = self.planetary_trajectory(interplanetary_sequence[-1], target_satellite, start_time, target_orbit, v_sc)
-        
-    #     # Output the decision chromosomes, the DV for each part, the total DV, the time for each part, the total time.
         
         
 if __name__ == "__main__":
@@ -397,7 +412,7 @@ if __name__ == "__main__":
     spice_kernels()
     venus, earth, mars, jupiter, saturn, titan = load_spice()
     
-    sequence = [earth, saturn]
+    sequence = [earth, venus, earth, jupiter, saturn]
     target_satellite = titan
     departure_dates = []
     target_orbit = [titan.radius * 2, 0.1]
@@ -407,9 +422,6 @@ if __name__ == "__main__":
     champ_inter, champ_plan = trajectory.entire_trajectory(sequence=sequence, departure_dates=departure_dates,
                                                            target_satellite=titan,
                                                            target_orbit=target_orbit)
-
-    champ_inter = [10790.386060785193, 0.06204046642376808, 0.561252533215833, 10000.0, 0.01, 1500.0]
-    champ_plan = [15.0, 0.17972278837262365, 0.09095129656224789, 21.57452055244928]
     
     trajectory.pretty(champ_inter, champ_plan)
     trajectory.plot(champ_inter, champ_plan)

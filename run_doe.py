@@ -1,35 +1,21 @@
-from multiprocessing import Pool, cpu_count, Process
-from csv import DictWriter
-import numpy as np
 import os
+import numpy as np
+import pykep as pk
+
+from multiprocessing import Pool, cpu_count, Process
+from csv import DictWriter, DictReader
 from udps.chemical_propulsion2 import TitanChemicalUDP
 from udps.planetary_system import PlanetToSatellite
 from trajectory_solver import TrajectorySolver, load_spice, spice_kernels
 from itertools import repeat
 from datetime import datetime as dt
-import pykep as pk
-
-"""
-Two main functions:
-1) Function that runs the trajectory and spits out the things we care about
-2) Function that writes to the csv 
-"""
+from display_style import bcolors
+from ast import literal_eval
 
 # Instantiate the class once from the start and don't do it again
-trajectory = TrajectorySolver(TitanChemicalUDP, PlanetToSatellite)
-
-class bcolors:
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKCYAN = '\033[96m'
-    OKGREEN = '\033[92m'
-    SUBTITLE = '\033[90m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
-    BOLD = '\033[1m'
-    ITALIC = '\033[3m'
-    UNDERLINE = '\033[4m'
+interplanetary_udp = TitanChemicalUDP
+planetary_udp = PlanetToSatellite
+trajectory = TrajectorySolver(interplanetary_udp, planetary_udp)
 
 def traj_analysis(args):
     """
@@ -44,7 +30,7 @@ def traj_analysis(args):
     try:
         champ_inter, champ_plan = trajectory.entire_trajectory(sequence, departure_dates, target_satellite, target_orbit)
         DV, t_depart, t_arrive, t_phases, tof = trajectory.get_results(champ_inter, champ_plan)
-        
+
         data = {"case_no":case+1, "sequence":"".join([planet.name[0] for planet in sequence]), "total_DV":DV, "t_depart":t_depart.mjd2000, 
                 "t_arrive":t_arrive.mjd2000, "tof":tof, "t_phases":t_phases, "champ_inter":list(champ_inter), "champ_plan":list(champ_plan)}
     except:
@@ -53,16 +39,16 @@ def traj_analysis(args):
         
     return data
 
-def load_interp(filepath):
-    """
-    Loads an interpolated planet object
+# def load_interp(filepath):
+#     """
+#     Loads an interpolated planet object
 
-    Args:
-        filepath (``string``): the path to the planet object
-    """
-    with open(filepath, "rb") as inp:
-            planet_new = pickle.load(inp)
-    return planet_new
+#     Args:
+#         filepath (``string``): the path to the planet object
+#     """
+#     with open(filepath, "rb") as inp:
+#             planet_new = pickle.load(inp)
+#     return planet_new
 
 def extract_seqs(doe_filename, planet_dic, add_start_end=False, starting=None, ending=None):
     """
@@ -127,6 +113,91 @@ def main(doe_filename, planet_dic, out_filename, departure_window, target_satell
             print(f"\t{bcolors.ITALIC}{bcolors.SUBTITLE}Elapsed time: {dt.now() - start} \n {bcolors.ENDC}")
             writer.writerow(result)
 
+def read_doe_case(doe_filename, sequence):
+    """
+    Reads in a specific case in the DoE output, defined using the sequence, and outputs the row as a dictionary
+
+    Args:
+        doe_filename (``str``): the filepath to the output DoE file
+        sequence (``str``): description of the sequence, e.g. 'EVEMJS' 
+    """
+    with open(doe_filename) as f:
+        reader = DictReader(f)
+        case = next((item for item in reader if item["sequence"] == sequence), None)
+    
+    # Give an error if the sequence isn't found
+    if case is None:
+        raise LookupError("ERROR: Sequence not found in file")
+    
+    # Convert everything to the correct dtype
+    case['case_no'] = int(case["case_no"])
+    case["total_DV"] = float(case["total_DV"])
+    case["t_depart"] = float(case["t_depart"])
+    case["t_arrive"] = float(case["t_arrive"])
+    case["tof"] = float(case["tof"])
+    case["t_phases"] = literal_eval(case["t_phases"])
+    case["champ_inter"] = literal_eval(case["champ_inter"])
+    case["champ_plan"] = literal_eval(case["champ_plan"])
+    
+    return case
+
+def pretty_doe_result(doe_filename, sequence, planets, target, target_orbit):
+    """
+    Prints the pretty results for a single trajectory read in from a DoE output file
+
+    Args:
+        doe_filename (``str``): the filepath to the output DoE file
+        sequence (``str``): description of the sequence, e.g. 'EVEMJS' 
+        planets (``array(pykep.planet)``): the array of pykep.planet objects for the interplanetary planets
+        target (``pykep.planet``): the target satellite for the planetary stage
+    """
+    case = read_doe_case(doe_filename, sequence)
+    champion_interplanetary = case["champ_inter"]
+    champion_planetary = case["champ_plan"]
+    
+    n = len(sequence)
+    planetary_sequence = []
+    for planetary_letter in list(sequence):
+        for planet in planets:
+            if planetary_letter == planet.name[0]:
+                planetary_sequence.append(planet)
+    
+    trajectory.interplanetary_udp = interplanetary_udp(planetary_sequence)
+    v_sc, start_time = trajectory.compute_final_vinf(planetary_sequence[-1], champion_interplanetary)
+    trajectory.planetary_udp = planetary_udp(start_time, target_orbit[0], target_orbit[1], planetary_sequence[-1], target, 
+                                          tof=[10,100], r_start_max=15, initial_insertion=True, v_inf=v_sc, max_revs=5)
+    
+    trajectory.pretty(champion_interplanetary, champion_planetary)
+    
+def plot_doe_result(doe_filename, sequence, planets, target, target_orbit):
+    """
+    Plots the results for a single trajectory read in from a DoE output file
+
+    Args:
+        doe_filename (``str``): the filepath to the output DoE file
+        sequence (``str``): description of the sequence, e.g. 'EVEMJS' 
+        planets (``array(pykep.planet)``): the array of pykep.planet objects for the interplanetary planets
+        target (``pykep.planet``): the target satellite for the planetary stage
+    """
+    case = read_doe_case(doe_filename, sequence)
+    champion_interplanetary = case["champ_inter"]
+    champion_planetary = case["champ_plan"]
+    
+    n = len(sequence)
+    planetary_sequence = []
+    for planetary_letter in list(sequence):
+        for planet in planets:
+            if planetary_letter == planet.name[0]:
+                planetary_sequence.append(planet)
+                
+    trajectory.interplanetary_udp = interplanetary_udp(planetary_sequence)
+    v_sc, start_time = trajectory.compute_final_vinf(planetary_sequence[-1], champion_interplanetary)
+    trajectory.planetary_udp = planetary_udp(start_time, target_orbit[0], target_orbit[1], planetary_sequence[-1], target, 
+                                          tof=[10,100], r_start_max=15, initial_insertion=True, v_inf=v_sc, max_revs=5)
+    
+    trajectory.plot(champion_interplanetary, champion_planetary)
+
+
 if __name__ == "__main__":
     spice_kernels()
     venus, earth, mars, jupiter, saturn, titan = load_spice()
@@ -138,9 +209,11 @@ if __name__ == "__main__":
     departure_window = [] #### NEED TO FIX THIS EVENTUALLY
     target = titan
     target_orbit = [titan.radius * 2, 0.1]
-
-    # x = traj_analysis([[earth,venus], departure_window, titan, target_orbit, 1])
-    # print(x)
     
     main(input_filename, planet_dic, output_filename, departure_window, target, target_orbit, 
         start, append_seq=True, start_seq=earth, end_seq=saturn)
+    
+    pretty_doe_result(output_filename, "EEEEEEVS", [venus, earth, mars, jupiter, saturn], target, target_orbit)
+    # plot_doe_result(output_filename, "EEEEEEVS", [venus, earth, mars, jupiter, saturn], target, target_orbit)
+
+    ### ALSO NEED TO ADD THE ABILITY TO RE-RUN A CASE X TIMES TO CONFIRM THAT IT IS THE OPTIMAL RESULT

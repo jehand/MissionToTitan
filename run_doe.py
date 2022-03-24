@@ -1,8 +1,5 @@
 import os
-import numpy as np
-import pykep as pk
-
-from multiprocessing import Pool, cpu_count
+from multiprocessing import Pool, cpu_count, set_start_method
 from csv import DictWriter, DictReader
 from udps.chemical_propulsion2 import TitanChemicalUDP
 from udps.planetary_system import PlanetToSatellite
@@ -33,7 +30,8 @@ def traj_analysis(args):
 
         data = {"case_no":case+1, "sequence":"".join([planet.name[0] for planet in sequence]), "total_DV":DV, "t_depart":t_depart.mjd2000, 
                 "t_arrive":t_arrive.mjd2000, "tof":tof, "t_phases":t_phases, "champ_inter":list(champ_inter), "champ_plan":list(champ_plan)}
-    except:
+    except Exception as e:
+        print("ERROR JEHAN", e)
         data = {"case_no":case+1, "sequence":"".join([planet.name[0] for planet in sequence]), "total_DV":"FAILED", "t_depart":None, 
                 "t_arrive":None, "tof":None, "t_phases":None, "champ_inter":None, "champ_plan":None}
         
@@ -199,6 +197,7 @@ def plot_doe_result(doe_filename, sequence, planets, target, target_orbit):
 
 
 if __name__ == "__main__":
+    set_start_method("spawn")
     spice_kernels()
     venus, earth, mars, jupiter, saturn, titan = load_spice()
     
@@ -213,7 +212,7 @@ if __name__ == "__main__":
     main(input_filename, planet_dic, output_filename, departure_window, target, target_orbit, 
         start, append_seq=True, start_seq=earth, end_seq=saturn)
     
-    pretty_doe_result(output_filename, "EEEEEEVS", [venus, earth, mars, jupiter, saturn], target, target_orbit)
+    # pretty_doe_result(output_filename, "EEEEEEVS", [venus, earth, mars, jupiter, saturn], target, target_orbit)
     # plot_doe_result(output_filename, "EEEEEEVS", [venus, earth, mars, jupiter, saturn], target, target_orbit)
 
     ### ALSO NEED TO ADD THE ABILITY TO RE-RUN A CASE X TIMES TO CONFIRM THAT IT IS THE OPTIMAL RESULT

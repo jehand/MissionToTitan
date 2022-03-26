@@ -13,4 +13,4 @@ pip install pygmo
 Lastly, you should not need ```pygmo-plugins-nonfree``` to run the scripts in this repository. However, if desired, this library can be installed following the instructions [here](https://anaconda.org/conda-forge/pygmo_plugins_nonfree). 
 
 ## Usage
-The only script you need to open is the [```main.py```](main.py) file. This script contains pre-written functions to calculate trajectories as desired, and to create porkchop plots.   
+To run a DoE, the only script you need to open is the [```run_doe.py```](run_doe.py) file. This script contains pre-written functions to calculate trajectories as desired, and to run a DoE using Python's multiprocessing library. Therefore, this script can be run on the cluster. Make sure to download the correct spice kernels with the ephemeris data desired, and to update these filenames in the ```spice_kernels()``` and ```load_spice()``` functions in [```trajectory_solver.py```](trajectory_solver.py).

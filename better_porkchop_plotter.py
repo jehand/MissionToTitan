@@ -23,7 +23,8 @@ import matplotlib.pyplot as plt
 # T0 = pk.epoch_from_string(dt.today().isoformat().replace('T', ' '))
 # Launch Date: specified
 T0 = pk.epoch_from_string("2027-January-01 12:00:00")
-print(T0)
+# T0 = pk.epoch_from_string(input("Enter desired departure date in this format \"YEAR-MONTH-DAY ##:##:##\": \n"))
+print("You entered: ", T0)
 
 pk.util.load_spice_kernel('DE423.bsp')
 earth = pk.planet.spice(
@@ -88,7 +89,7 @@ saturn.name = 'SATURN'
 
 # Common parameters
 planet_sequence = [earth, mars, venus, mars, jupiter, saturn]  # start at Earth, end at Jupiter
-Vinf_dep = 2.                       # km/s
+Vinf_dep = 2.                       # km/s, dv leaving initial planet
 multi_objective = False             # single objective for min dV
 orbit_insertion = True              # are you inserting at the end? Yes (True)
 e_target = 0.75                     # orbit insertion eccentricity, ND
@@ -96,7 +97,7 @@ rp_target = jupiter.safe_radius     # orbit insertion radius of periapsis, m (de
 
 # Alpha Transcription MGA, no variation in departure time, single objective
 T0_u = 0                            # upper bound on departure time
-tof_bounds = [50, 6000]             # window for entire trajectory
+tof_bounds = [50, 6000]             # window for entire trajectory - days
 encoding = 'alpha'                  # change 'alpha' to 'direct' if you want to use the direct method
 
 alpha_mga = pk.trajopt.mga(
@@ -146,10 +147,10 @@ def mga_dV(t0: type(pk.epoch(0)), tof: float):
     return alpha_delta_v, best_tofs
 
 # create sweeps and storage
-n = 5                               # number of iterations
+n = 6                               # number of iterations
 dt_departure = np.empty([n, ])      # creates an empty matrix based on n rows
-t_step = 30.0                       # time step (days???)
-dt_arrival = np.linspace(100, 3000, n, True)
+t_step = 30.0                       # time step - days
+dt_arrival = np.linspace(100, 3000, n, True)      # 100 = 100 days post launch; 3000 = 3000 days post launch;n = # steps
 dVs = np.empty([n, n])
 dT1 = np.empty([n, n])
 dT2 = np.empty([n, n])
@@ -169,10 +170,11 @@ for i in range(0, n):
 
 # Plot
 fig1 = plt.figure(figsize=(30, 30))
-plt.contour(dVs)
+plt.contour(dVs, 5)
 plt.xlabel("Earth Launch Date")
 plt.ylabel("Titan Arrival Date")
 plt.title("Earth to Titan Porkchop Plot")
-plt.colorbar()      # colorbar title: Total DeltaV (km/s)
+clb = plt.colorbar()
+clb.set_label('Total DeltaV (km/s)')
 
 plt.show()

@@ -126,7 +126,6 @@ def mga_dV(t0: type(pk.epoch(0)), tof: float):
         rp_target=rp_target,
     )
 
-# is this part of the code for the porkchop plot?
     # declare problem (and tolerances)
     prob = pg.problem(mga_udp)          # mga = multi-gravity assist; udp = user datagram protocol
     # algorithm setup; each library of solvers uses different setups. This one demonstrates NLopt setup.

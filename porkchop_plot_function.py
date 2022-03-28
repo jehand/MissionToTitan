@@ -18,6 +18,73 @@ import matplotlib.pyplot as plt
 
 '''
 #######################################################################################################################
+Load Spice Kernel and Relative Planets
+#######################################################################################################################
+'''
+
+pk.util.load_spice_kernel('DE423.bsp')
+earth = pk.planet.spice(
+    'EARTH',  # 'target_id', body of interest
+    'SUN',  # 'observer_id', the center of the reference frame
+    'ECLIPJ2000',  # reference frame, point of origin for calculations
+    'NONE',  # abberations; corrections accounting for finite light speed for observations; unnecessary
+    pk.MU_SUN,  # Mu of the central body for reference frame (Mu = "standard gravitational parameter" = G*M
+    pk.MU_EARTH,  # Mu of target body
+    6378100.,  # radius of target body (meters)
+    6378100. * 1.1  # safe radius for target body (meters)
+    )
+earth.name = 'EARTH'
+
+venus = pk.planet.spice(
+    'VENUS',
+    'SUN',
+    'ECLIPJ2000',
+    'NONE',
+    pk.MU_SUN,
+    3.24859e14,  # Mu of target body, Venus
+    6051800.,  # Radius of target body (meters), Venus
+    6051800. * 1.1  # Safe radius for target body (meters), Venus
+    )
+venus.name = 'VENUS'
+
+mars = pk.planet.spice(
+    'MARS',
+    'SUN',
+    'ECLIPJ2000',
+    'NONE',
+    pk.MU_SUN,
+    4.282837e13,  # Mu of target body, Mars
+    3389500.,  # Radius of target body (meters), Mars
+    3389500 * 1.1  # Safe radius for target body (meters), Mars
+    )
+mars.name = 'MARS'
+
+jupiter = pk.planet.spice(
+    'JUPITER BARYCENTER',
+    'SUN',
+    'ECLIPJ2000',
+    'NONE',
+    pk.MU_SUN,
+    1.26686534e+17,  # Mu of target body, Jupiter
+    69911000.,  # Radius of target body (meters), Jupiter
+    69911000. * 1.02  # Safe radius for target body (meters), Jupiter
+    )
+jupiter.name = 'JUPITER'
+
+saturn = pk.planet.spice(
+    'Saturn BARYCENTER',
+    'SUN',
+    'ECLIPJ2000',
+    'NONE',
+    pk.MU_SUN,
+    3.7931187e+16,  # Mu of the target body, Saturn
+    58232000.,  # Radius of target body (meters), Saturn
+    58232000. * 1.02  # Safe radius for target body (meters), Saturn
+    )
+saturn.name = 'SATURN'
+
+'''
+#######################################################################################################################
 Porkchop Plotter Function
 #######################################################################################################################
 '''
@@ -29,67 +96,6 @@ def porkchop_plotter(T0, Vinf_dep, e_target, tof_bounds, n, t_step):
     # tof_bounds:       window for entire trajectory - days
     # n:                number of iterations
     # t_step:           time step (days)
-
-    pk.util.load_spice_kernel('DE423.bsp')
-    earth = pk.planet.spice(
-        'EARTH',  # 'target_id', body of interest
-        'SUN',  # 'observer_id', the center of the reference frame
-        'ECLIPJ2000',  # reference frame, point of origin for calculations
-        'NONE',  # abberations; corrections accounting for finite light speed for observations; unnecessary
-        pk.MU_SUN,  # Mu of the central body for reference frame (Mu = "standard gravitational parameter" = G*M
-        pk.MU_EARTH,  # Mu of target body
-        6378100.,  # radius of target body (meters)
-        6378100. * 1.1  # safe radius for target body (meters)
-    )
-    earth.name = 'EARTH'
-
-    venus = pk.planet.spice(
-        'VENUS',
-        'SUN',
-        'ECLIPJ2000',
-        'NONE',
-        pk.MU_SUN,
-        3.24859e14,  # Mu of target body, Venus
-        6051800.,  # Radius of target body (meters), Venus
-        6051800. * 1.1  # Safe radius for target body (meters), Venus
-    )
-    venus.name = 'VENUS'
-
-    mars = pk.planet.spice(
-        'MARS',
-        'SUN',
-        'ECLIPJ2000',
-        'NONE',
-        pk.MU_SUN,
-        4.282837e13,  # Mu of target body, Mars
-        3389500.,  # Radius of target body (meters), Mars
-        3389500 * 1.1  # Safe radius for target body (meters), Mars
-    )
-    mars.name = 'MARS'
-
-    jupiter = pk.planet.spice(
-        'JUPITER BARYCENTER',
-        'SUN',
-        'ECLIPJ2000',
-        'NONE',
-        pk.MU_SUN,
-        1.26686534e+17,  # Mu of target body, Jupiter
-        69911000.,  # Radius of target body (meters), Jupiter
-        69911000. * 1.02  # Safe radius for target body (meters), Jupiter
-    )
-    jupiter.name = 'JUPITER'
-
-    saturn = pk.planet.spice(
-        'Saturn BARYCENTER',
-        'SUN',
-        'ECLIPJ2000',
-        'NONE',
-        pk.MU_SUN,
-        3.7931187e+16,  # Mu of the target body, Saturn
-        58232000.,  # Radius of target body (meters), Saturn
-        58232000. * 1.02  # Safe radius for target body (meters), Saturn
-    )
-    saturn.name = 'SATURN'
 
     # Common parameters
     multi_objective = False     # single objective for min dV
@@ -183,11 +189,13 @@ def porkchop_plotter(T0, Vinf_dep, e_target, tof_bounds, n, t_step):
 '''
 #######################################################################################################################
 Calling and Using the Porkchop Plotter Function
+    - It is here where the user should change parameters for the output they expect
 #######################################################################################################################
 '''
 
+
 T0 = pk.epoch_from_string("2027-January-01 12:00:00")           # Launch date
-planet_sequence = [earth, mars, venus, mars, jupiter, saturn]   # start at Earth, end at Jupiter
+planet_sequence = [earth, mars, venus, mars, jupiter, saturn]   # Start at Earth, end at Saturn
 Vinf_dep = 2.                 # km/s, dv leaving initial planet
 e_target = 0.75               # orbit insertion eccentricity, ND
 T0_u = 0                      # upper bound on departure time
@@ -197,14 +205,6 @@ t_step = 30.0                 # time step - days
 
 
 # put the call to the function in a loop so we create multiple porkchop plots at once
+# for i in porkchop_plotter:
 
-porkchop_plotter()
-
-
-'''
-#######################################################################################################################
-'''
-
-
-
-
+porkchop_plotter(T0, Vinf_dep, e_target, tof_bounds, n, t_step)

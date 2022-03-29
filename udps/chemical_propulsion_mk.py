@@ -5,11 +5,19 @@ from pykep import epoch_from_string
 import pygmo as pg
 from pygmo import *
 
-from rockets import launchers
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 from math import log, acos, cos, sin, asin, exp, sqrt
+
+try:
+    from rockets import launchers
+    from algorithms import Algorithms
+except:
+    import sys
+    sys.path.append(sys.path[0]+"/udps")
+    from rockets import launchers
+    from algorithms import Algorithms
 
 
 class TitanChemicalUDP(mga_1dsm):
@@ -38,19 +46,20 @@ class TitanChemicalUDP(mga_1dsm):
 
         super().__init__(
             seq=sequence,
-            t0=[pk.epoch_from_string("2022-JAN-01 00:00:00.000"), pk.epoch_from_string("2030-JAN-01 00:00:00.000")],
-            tof=[2000,7305.0],
-            vinf=[1, 10],
+            t0=[pk.epoch_from_string("1995-JAN-01 00:00:00.000"), pk.epoch_from_string("2000-DEC-31 00:00:00.000")],
+            tof=3650,
+            vinf=[0, 5],
             add_vinf_dep=False,
             add_vinf_arr=True,
-            tof_encoding='alpha',
+            tof_encoding='eta',
             multi_objective=False,
             orbit_insertion=True,
-            e_target=.0288,
-            rp_target=1186680000,
+            e_target=.9823,
+            rp_target=78232 * 1e3,
             eta_lb=0.01,
             eta_ub=0.99,
-            rp_ub=25
+            rp_ub=25,
+            max_revs=1
         )
 
         self.sequence = sequence
@@ -69,7 +78,7 @@ class TitanChemicalUDP(mga_1dsm):
         # We now have the initial mass of the spacecraft
         m_initial = launchers().ariane6(x[3] / 1000., declination) # Need to change the launcher model being used parametrically
         # And we can evaluate the final mass via Tsiolkowsky
-        Isp = 312.
+        Isp = 324.
         g0 = 9.80665
         DV = super().fitness(x)[0]
         DV = DV + 165.  # losses for 3 swgbys + insertion
@@ -78,9 +87,9 @@ class TitanChemicalUDP(mga_1dsm):
         if m_final == 0:
             m_final = 1e-320
         if self.constrained:
-            retval = [-log(m_final), 1500 - m_final]
+            retval = [DV, 3000-m_final]
         else:
-            retval = [-log(m_final)]
+            retval = [DV]
         return retval
 
     def get_nic(self):
@@ -169,18 +178,21 @@ if __name__ == "__main__":
 
 
     # Defining the sequence and the problem
-    planetary_sequence = [earth,venus,earth]
-    udp = TitanChemicalUDP(sequence=planetary_sequence, constrained=False)
+    planetary_sequence = [earth,venus,venus,earth,jupiter,saturn]
+    udp = TitanChemicalUDP(sequence=planetary_sequence, constrained=True)
     print(udp)
     # We solve it!!
-   
-
-    alg_glob = pg.algorithm(pg.sade())
-    alg_loc = pg.algorithm(pg.nlopt('bobyqa'))
-
-    pop_num = 20
+    udp.c_tol = 1e-6
     
-    pop = pg.population(udp,pop_num)
+
+    alg_glob = pg.algorithm(pg.mbh(pg.algorithm(pg.nlopt('auglag'))))
+    alg_loc = pg.algorithm(pg.nlopt('cobyla'))
+
+    alg_glob.set_verbosity(500)
+    alg_loc.set_verbosity(500)
+    pop_num = 200
+    
+    pop = pg.population(prob=udp,size=pop_num)
     pop = alg_glob.evolve(pop)
     pop = alg_loc.evolve(pop)
 

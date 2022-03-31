@@ -46,11 +46,11 @@ class TitanChemicalUDP(mga_1dsm):
 
         super().__init__(
             seq=sequence,
-            t0=[pk.epoch_from_string("2022-JAN-01 00:00:00.000"), pk.epoch_from_string("2030-JAN-01 00:00:00.000")],
+            t0=[pk.epoch_from_string("2027-JAN-01 00:00:00.000"), pk.epoch_from_string("2030-JAN-01 00:00:00.000")],
             tof=[[20, 1500] for _ in range(len(sequence)-1)],
-            vinf=[1, 10],
+            vinf=[1, 7],
             add_vinf_dep=False,
-            add_vinf_arr=False,
+            add_vinf_arr=True,
             tof_encoding='direct',
             multi_objective=False,
             orbit_insertion=False,
@@ -363,8 +363,6 @@ if __name__ == "__main__":
     #print(pg.problem(udp).feasibility_x(champion))
     #print(champion)
     
-    
-    
     # mpl.rcParams['legend.fontsize'] = 6
     
     # fig = plt.figure()
@@ -372,33 +370,3 @@ if __name__ == "__main__":
     # udp.plot(champion, ax=axis)
     # axis.legend(fontsize=6)
     # plt.show()
-    
-    
-    """
-    Problem definition: 
-    1) MGA_1DSM to Saturn
-    2) Once under Saturn's influence, switch to Saturns point of reference and do a PL2PL to Titan
-    3) Once under Titan's influence, burn into the orbit we are concerned with
-    Constraints:
-    1) Vinf at Titan
-    2) Orbit at Titan
-    3) Payload mass
-    4) Vinf at Saturn maybe?
-    6) Launcher capability
-    
-    Minimizing:
-    1) Mass difference (fuel consumption: (m0-mf) / m0)
-    2) Time of flight
-    
-    Notes:
-    1) Have a feasibility while loop after to repeat until you get feasible results (try catch)
-    2) Set Saturn's orbit insertion to be between its rings
-    
-    MGA_1DSM Decision Vector:
-                         0     1  2   3     4     5      6      7     8    9   ....    -1
-      direct encoding: [t0] + [u, v, Vinf, eta1, T1] + [beta, rp/rV, eta2, T2] + ... 
-      alpha encoding:  [t0] + [u, v, Vinf, eta1, a1] + [beta, rp/rV, eta2, a2] + ... + [T]
-      eta encoding:    [t0] + [u, v, Vinf, eta1, n1] + [beta, rp/rV, eta2, n2] + ...
-      
-      where t0 is a mjd2000, Vinf is in km/s, T in days, beta in radians and the rest non dimensional.
-    """

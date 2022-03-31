@@ -429,4 +429,4 @@ if __name__ == "__main__":
                                                            target_orbit=target_orbit)
     
     trajectory.pretty(champ_inter, champ_plan)
-    trajectory.plot(champ_inter, champ_plan)
+    #trajectory.plot(champ_inter, champ_plan)

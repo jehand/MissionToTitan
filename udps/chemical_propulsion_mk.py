@@ -12,12 +12,11 @@ from math import log, acos, cos, sin, asin, exp, sqrt
 
 try:
     from rockets import launchers
-    from algorithms import Algorithms
+
 except:
     import sys
-    sys.path.append(sys.path[0]+"/udps")
-    from rockets import launchers
-    from algorithms import Algorithms
+    sys.path.append(sys.path[0]+"\\udps")
+    from udps.rockets import launchers
 
 
 class TitanChemicalUDP(mga_1dsm):
@@ -56,8 +55,10 @@ class TitanChemicalUDP(mga_1dsm):
             orbit_insertion=True,
             e_target=.9823,
             rp_target=78232 * 1e3,
-            rp_ub=25,
-            max_revs=0
+            rp_ub=300,
+            max_revs=3,
+            eta_ub = .99,
+            eta_lb = .01
         )
 
         self.sequence = sequence
@@ -124,7 +125,7 @@ class TitanChemicalUDP(mga_1dsm):
         declination = asin(sindelta) / np.pi * 180.
         m_initial = launchers().ariane6(x[3] / 1000., declination)
         # And we can evaluate the final mass via Tsiolkowsky
-        Isp = 312.
+        Isp = 324.
         g0 = 9.80665
         DV = super().fitness(x)[0]
         DV = DV + 165.  # losses for 3 swgbys + insertion
@@ -156,7 +157,7 @@ if __name__ == "__main__":
 
     # Spice has arguments: target, observer, ref_frame, abberations, mu_central_body, mu_self, radius, safe_radius
     earth = pk.planet.spice('EARTH BARYCENTER', 'SUN', 'ECLIPJ2000', 'NONE', pk.MU_SUN, pk.MU_EARTH,
-                            pk.EARTH_RADIUS, pk.EARTH_RADIUS * 1.2)
+                            pk.EARTH_RADIUS, pk.EARTH_RADIUS * 1.1)
 
     venus = pk.planet.spice('VENUS BARYCENTER', 'SUN', 'ECLIPJ2000', 'NONE', pk.MU_SUN, MU_VENUS,
                             R_VENUS, R_VENUS*1.1)
@@ -182,13 +183,16 @@ if __name__ == "__main__":
     # We solve it!!
         
     
-    alg_glob = pg.algorithm(pg.mbh(algo=pg.algorithm(pg.de1220(gen=10000,ftol=1e-12,xtol=1e-12)),stop=3,perturb=1))
+    alg_glob = pg.algorithm(pg.mbh(algo=pg.algorithm(pg.de1220(gen=500,ftol=1e-19,xtol=1e-19)),stop=3,perturb=.9))
     alg_loc = pg.nlopt('bobyqa')
-    alg_loc.ftol_abs = 1e-10
+    alg_loc.ftol_abs = 1e-20
+    alg_loc.ftol_rel = 1e-20
+    alg_loc.xtol_abs = 1e-20
+    alg_loc.xtol_rel = 1e-20
     alg_loc = pg.algorithm(alg_loc)
     
     verb = 500
-    pop_num = 100
+    pop_num = 1000
     
     pop = pg.population(prob=udp,size=pop_num)    
     

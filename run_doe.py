@@ -31,7 +31,6 @@ def traj_analysis(args):
         data = {"case_no":case+1, "sequence":"".join([planet.name[0] for planet in sequence]), "total_DV":DV, "t_depart":t_depart.mjd2000, 
                 "t_arrive":t_arrive.mjd2000, "tof":tof, "t_phases":t_phases, "champ_inter":list(champ_inter), "champ_plan":list(champ_plan)}
     except Exception as e:
-        print("ERROR JEHAN", e)
         data = {"case_no":case+1, "sequence":"".join([planet.name[0] for planet in sequence]), "total_DV":"FAILED", "t_depart":None, 
                 "t_arrive":None, "tof":None, "t_phases":None, "champ_inter":None, "champ_plan":None}
         

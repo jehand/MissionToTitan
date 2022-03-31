@@ -23,12 +23,13 @@ global_algo_dic = {"SADE": pg.sade(),
                    "SA": pg.simulated_annealing(),
                    "ABC": pg.bee_colony(),
                    "CMA-ES": pg.cmaes(),
-                   "xNES": pg.xnes(),
+                   "xNES": pg.xnes(), 
                    "NSGA2": pg.nsga2(),
                    "MOEA/D": pg.moead(),
                    "MHACO": pg.maco(),
                    "NSPSO": pg.nspso()
                    }
+                   
 local_algo_dic = {"Compass": pg.compass_search(),
                   "NLOPT-COBYLA": pg.nlopt("cobyla"),
                   "NLOPT-BOBYQA": pg.nlopt("bobyqa"),
@@ -127,10 +128,11 @@ def main(udp, global_algos, local_algos, out_filename):
             if result["DV"] == "FAILED":
                 color = bcolors.FAIL
                 success = "FAIL"
+                print("{}{}! ({:.2f}%){}".format(color, success, result["DV"]/1000, (i+1)*100/cases, bcolors.ENDC))
             else:
                 color = bcolors.OKGREEN
                 success = "SUCCESS"
-            print("{}{}! Got result DV = {:.2f}km/s ({:.2f}%){}".format(color, success, result["DV"]/1000, (i+1)*100/cases, bcolors.ENDC))
+                print("{}{}! Got result DV = {:.2f}km/s ({:.2f}%){}".format(color, success, result["DV"]/1000, (i+1)*100/cases, bcolors.ENDC))
             print(f"\t{bcolors.ITALIC}{bcolors.SUBTITLE}Elapsed time: {dt.now() - start} \n {bcolors.ENDC}")
             writer.writerow(result)
 

@@ -47,7 +47,7 @@ class TitanChemicalUDP(mga_1dsm):
             seq=sequence,
             t0=[pk.epoch_from_string("1995-JAN-01 00:00:00.000"), pk.epoch_from_string("2000-DEC-31 00:00:00.000")],
             tof=3500,
-            vinf=[1, 5],
+            vinf=[0, 3],
             add_vinf_dep=False,
             add_vinf_arr=True,
             tof_encoding='eta',
@@ -56,7 +56,7 @@ class TitanChemicalUDP(mga_1dsm):
             e_target=.9823,
             rp_target=78232 * 1e3,
             rp_ub=300,
-            max_revs=3,
+            max_revs=5,
             eta_ub = .99,
             eta_lb = .01
         )

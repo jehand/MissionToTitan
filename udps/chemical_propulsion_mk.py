@@ -47,8 +47,8 @@ class TitanChemicalUDP(mga_1dsm):
         super().__init__(
             seq=sequence,
             t0=[pk.epoch_from_string("1995-JAN-01 00:00:00.000"), pk.epoch_from_string("2000-DEC-31 00:00:00.000")],
-            tof=3650,
-            vinf=[0, 5],
+            tof=3500,
+            vinf=[1, 5],
             add_vinf_dep=False,
             add_vinf_arr=True,
             tof_encoding='eta',
@@ -56,10 +56,8 @@ class TitanChemicalUDP(mga_1dsm):
             orbit_insertion=True,
             e_target=.9823,
             rp_target=78232 * 1e3,
-            eta_lb=0.01,
-            eta_ub=0.99,
             rp_ub=25,
-            max_revs=1
+            max_revs=0
         )
 
         self.sequence = sequence
@@ -158,7 +156,7 @@ if __name__ == "__main__":
 
     # Spice has arguments: target, observer, ref_frame, abberations, mu_central_body, mu_self, radius, safe_radius
     earth = pk.planet.spice('EARTH BARYCENTER', 'SUN', 'ECLIPJ2000', 'NONE', pk.MU_SUN, pk.MU_EARTH,
-                            pk.EARTH_RADIUS, pk.EARTH_RADIUS * 1.1)
+                            pk.EARTH_RADIUS, pk.EARTH_RADIUS * 1.2)
 
     venus = pk.planet.spice('VENUS BARYCENTER', 'SUN', 'ECLIPJ2000', 'NONE', pk.MU_SUN, MU_VENUS,
                             R_VENUS, R_VENUS*1.1)
@@ -179,22 +177,30 @@ if __name__ == "__main__":
 
     # Defining the sequence and the problem
     planetary_sequence = [earth,venus,venus,earth,jupiter,saturn]
-    udp = TitanChemicalUDP(sequence=planetary_sequence, constrained=True)
+    udp = TitanChemicalUDP(sequence=planetary_sequence, constrained=False)
     print(udp)
     # We solve it!!
-    udp.c_tol = 1e-6
+        
     
-
-    alg_glob = pg.algorithm(pg.mbh(pg.algorithm(pg.nlopt('auglag'))))
-    alg_loc = pg.algorithm(pg.nlopt('cobyla'))
-
-    alg_glob.set_verbosity(500)
-    alg_loc.set_verbosity(500)
-    pop_num = 200
+    alg_glob = pg.algorithm(pg.mbh(algo=pg.algorithm(pg.de1220(gen=10000,ftol=1e-12,xtol=1e-12)),stop=3,perturb=1))
+    alg_loc = pg.nlopt('bobyqa')
+    alg_loc.ftol_abs = 1e-10
+    alg_loc = pg.algorithm(alg_loc)
     
-    pop = pg.population(prob=udp,size=pop_num)
+    verb = 500
+    pop_num = 100
+    
+    pop = pg.population(prob=udp,size=pop_num)    
+    
+    alg_glob.set_verbosity(verb)
+    alg_loc.set_verbosity(verb)
+    
+    print('Global opt')
     pop = alg_glob.evolve(pop)
+    
+    print('starting local optimizer')
     pop = alg_loc.evolve(pop)
+    
 
 
     champion = pop.champion_x

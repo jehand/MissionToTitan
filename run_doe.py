@@ -109,6 +109,7 @@ def main(doe_filename, planet_dic, out_filename, departure_window, target_satell
             print("{}{}! Got result #{} ({:.2f}%){}".format(color, success, i+1, (i+1)*100/cases, bcolors.ENDC))
             print(f"\t{bcolors.ITALIC}{bcolors.SUBTITLE}Elapsed time: {dt.now() - start} \n {bcolors.ENDC}")
             writer.writerow(result)
+            csv_f.flush()
 
 def read_doe_case(doe_filename, sequence):
     """

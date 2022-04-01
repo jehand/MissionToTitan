@@ -1,23 +1,34 @@
 import pykep as pk
 from pykep.trajopt import mga_1dsm
-from pykep.planet import jpl_lp
-from pykep import epoch_from_string
+from pykep.core import epoch, DAY2SEC, MU_SUN, lambert_problem, propagate_lagrangian, fb_prop, AU, epoch
+from pykep.trajopt._lambert import lambert_problem_multirev
 import pygmo as pg
 from pygmo import *
-
-import matplotlib as mpl
-import matplotlib.pyplot as plt
 import numpy as np
 from math import log, acos, cos, sin, asin, exp, sqrt
+from typing import Any, Dict, List, Tuple
 
 try:
     from rockets import launchers
-
+    from algorithms import Algorithms
 except:
     import sys
-    sys.path.append(sys.path[0]+"\\udps")
-    from udps.rockets import launchers
+    sys.path.append(sys.path[0]+"/udps")
+    from rockets import launchers
+    from algorithms import Algorithms
 
+
+try:
+    from rockets import launchers
+    from algorithms import Algorithms
+except:
+    import sys
+    sys.path.append(sys.path[0]+"/udps")
+    from rockets import launchers
+    from algorithms import Algorithms
+
+def norm(x):
+    return sqrt(sum([it * it for it in x]))
 
 class TitanChemicalUDP(mga_1dsm):
     """
@@ -45,9 +56,9 @@ class TitanChemicalUDP(mga_1dsm):
 
         super().__init__(
             seq=sequence,
-            t0=[pk.epoch_from_string("1995-JAN-01 00:00:00.000"), pk.epoch_from_string("2000-DEC-31 00:00:00.000")],
+            t0=[pk.epoch_from_string("1997-JAN-01 00:00:00.000"), pk.epoch_from_string("1997-DEC-31 00:00:00.000")],
             tof=3500,
-            vinf=[0, 3],
+            vinf=[1, 5],
             add_vinf_dep=False,
             add_vinf_arr=True,
             tof_encoding='eta',
@@ -56,13 +67,97 @@ class TitanChemicalUDP(mga_1dsm):
             e_target=.9823,
             rp_target=78232 * 1e3,
             rp_ub=300,
-            max_revs=5,
+            max_revs= 3,
             eta_ub = .99,
             eta_lb = .01
         )
 
         self.sequence = sequence
         self.constrained = constrained
+
+    def _compute_dvs(self, x: List[float]) -> Tuple[
+        List[float], # DVs
+        List[Any], # Lambert legs
+        List[float], # T
+        List[Tuple[List[float], List[float]]], # ballistic legs
+        List[float], # epochs of ballistic legs
+    ]:
+        # 1 -  we 'decode' the chromosome recording the various times of flight
+        # (days) in the list T and the cartesian components of vinf
+        T, Vinfx, Vinfy, Vinfz = self._decode_times_and_vinf(x)
+
+        # 2 - We compute the epochs and ephemerides of the planetary encounters
+        t_P = list([None] * (self.n_legs + 1))
+        r_P = list([None] * (self.n_legs + 1))
+        v_P = list([None] * (self.n_legs + 1))
+        DV = list([0.0] * (self.n_legs + 1))
+        for i in range(len(self._seq)):
+            t_P[i] = epoch(x[0] + sum(T[0:i]))
+            r_P[i], v_P[i] = self._seq[i].eph(t_P[i])
+        ballistic_legs: List[Tuple[List[float],List[float]]] = []
+        ballistic_ep: List[float] = []
+        lamberts = []
+
+        # 3 - We start with the first leg
+        v0 = [a + b for a, b in zip(v_P[0], [Vinfx, Vinfy, Vinfz])]
+        ballistic_legs.append((r_P[0], v0))
+        ballistic_ep.append(t_P[0].mjd2000)
+        r, v = propagate_lagrangian(
+            r_P[0], v0, x[4] * T[0] * DAY2SEC, self.common_mu)
+
+        # Lambert arc to reach seq[1]
+        dt = (1 - x[4]) * T[0] * DAY2SEC
+        l = lambert_problem_multirev(v, lambert_problem(
+                    r, r_P[1], dt, self.common_mu, cw=False, max_revs=self.max_revs))
+        v_end_l = l.get_v2()[0]
+        v_beg_l = l.get_v1()[0]
+        lamberts.append(l)
+
+        ballistic_legs.append((r, v_beg_l))
+        ballistic_ep.append(t_P[0].mjd2000 + x[4] * T[0])
+
+        # First DSM occuring at time nu1*T1
+        DV[0] = norm([a - b for a, b in zip(v_beg_l, v)])
+
+        # 4 - And we proceed with each successive leg
+        for i in range(1, self.n_legs):
+            # Fly-by
+            v_out = fb_prop(v_end_l, v_P[i], x[
+                            7 + (i - 1) * 4] * self._seq[i].radius, x[6 + (i - 1) * 4], self._seq[i].mu_self)
+            ballistic_legs.append((r_P[i], v_out))
+            ballistic_ep.append(t_P[i].mjd2000)
+            # s/c propagation before the DSM
+            r, v = propagate_lagrangian(
+                r_P[i], v_out, x[8 + (i - 1) * 4] * T[i] * DAY2SEC, self.common_mu)
+            # Lambert arc to reach Earth during (1-nu2)*T2 (second segment)
+            dt = (1 - x[8 + (i - 1) * 4]) * T[i] * DAY2SEC
+            l = lambert_problem_multirev(v, lambert_problem(r, r_P[i + 1], dt,
+                                  self.common_mu, cw=False, max_revs=self.max_revs))
+            v_end_l = l.get_v2()[0]
+            v_beg_l = l.get_v1()[0]
+            lamberts.append(l)
+            # DSM occuring at time nu2*T2
+            DV[i] = norm([a - b for a, b in zip(v_beg_l, v)])
+
+            ballistic_legs.append((r, v_beg_l))
+            ballistic_ep.append(t_P[i].mjd2000 + x[8 + (i - 1) * 4] * T[i])
+
+        # Last Delta-v
+        if self._add_vinf_arr:
+            DV[-1] = norm([a - b for a, b in zip(v_end_l, v_P[-1])])
+            if self._orbit_insertion:
+                # In this case we compute the insertion DV as a single pericenter
+                # burn
+                DVper = np.sqrt(DV[-1] * DV[-1] + 2 *
+                                self._seq[-1].mu_self / self._rp_target)
+                DVper2 = np.sqrt(2 * self._seq[-1].mu_self / self._rp_target -
+                                self._seq[-1].mu_self / self._rp_target * (1. - self._e_target))
+                DV[-1] = np.abs(DVper - DVper2)
+
+        if self._add_vinf_dep:
+            DV[0] += x[3]
+
+        return (DV, lamberts, T, ballistic_legs, ballistic_ep)
 
     def fitness(self, x):
         T, Vinfx, Vinfy, Vinfz = self._decode_times_and_vinf(x)
@@ -139,7 +234,7 @@ class TitanChemicalUDP(mga_1dsm):
 
 if __name__ == "__main__":
 
-    pk.util.load_spice_kernel('de430.bsp')
+    pk.util.load_spice_kernel('de432s.bsp')
     
     # All parameters taken from: https://ssd.jpl.nasa.gov/astro_par.html
     # (and for Titan from: https://solarsystem.nasa.gov/moons/saturn-moons/titan/by-the-numbers/)

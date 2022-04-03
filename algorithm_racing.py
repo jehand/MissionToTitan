@@ -10,12 +10,12 @@ from display_style import bcolors
 from ast import literal_eval
 import pygmo as pg
 
-global_algo_dic = {"SADE": pg.sade(gen=5000, ftol=1e-10, xtol=1e-10),
+global_algo_dic = {"SADE": pg.sade(gen=5000),
                    "DE": pg.de(),
                    "GACO": pg.gaco(gen=5000),
-                   "DE_1220": pg.de1220(gen=500, ftol=1e-10, xtol=1e-10),
+                   "DE_1220": pg.de1220(gen=10000, ftol=1e-19, xtol=1e-19),
                    "GWO": pg.gwo(gen=5000),
-                   "IHS": pg.ihs(gen=500),
+                   "IHS": pg.ihs(gen=5000),
                    "PSO": pg.pso(),
                    "GPSO": pg.pso_gen(gen=5000),
                    "SEA": pg.sea(),
@@ -69,7 +69,7 @@ def analysis(args):
     udp, algos, case = args
     spice_kernels()
     
-    pop_n = 1000
+    pop_n = 100
     pop = pg.population(udp, pop_n)
     try:
         alg_glob_no_mbh = pg.algorithm(global_algo_dic[algos[0]])
@@ -167,7 +167,7 @@ if __name__ == "__main__":
     spice_kernels()
     venus, earth, mars, jupiter, saturn, titan = load_spice()
     
-    global_algos = list(global_algo_dic.keys()) #["SADE", "DE", "GACO"]
+    global_algos = ["DE_1220"]
     local_algos = ["COMPASS", "NLOPT-BOBYQA", "NLOPT-PRAXIS", "NLOPT-COBYLA", "NLOPT-SLSQP", "NLOPT-MMA"]
     output_filename = "results/algorithm_comparison.csv"
     

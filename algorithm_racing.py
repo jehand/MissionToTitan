@@ -172,7 +172,7 @@ if __name__ == "__main__":
     output_filename = "results/algorithm_comparison.csv"
     
     # Testing the analysis function
-    planetary_sequence = [earth,venus,earth,jupiter,saturn]
+    planetary_sequence = [earth,venus,venus,earth,jupiter,saturn]
     udp = TitanChemicalUDP(sequence=planetary_sequence, constrained=False)
     
     # Run all algos with python multiprocessing

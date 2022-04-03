@@ -17,16 +17,6 @@ except:
     from rockets import launchers
     from algorithms import Algorithms
 
-
-try:
-    from rockets import launchers
-    from algorithms import Algorithms
-except:
-    import sys
-    sys.path.append(sys.path[0]+"/udps")
-    from rockets import launchers
-    from algorithms import Algorithms
-
 def norm(x):
     return sqrt(sum([it * it for it in x]))
 

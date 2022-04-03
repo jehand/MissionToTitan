@@ -47,7 +47,7 @@ class TitanChemicalUDP(mga_1dsm):
         super().__init__(
             seq=sequence,
             t0=[pk.epoch_from_string("1997-JAN-01 00:00:00.000"), pk.epoch_from_string("1997-DEC-31 00:00:00.000")],
-            tof=3500,
+            tof=2500,
             vinf=[1, 5],
             add_vinf_dep=False,
             add_vinf_arr=True,
@@ -224,7 +224,7 @@ class TitanChemicalUDP(mga_1dsm):
 
 if __name__ == "__main__":
 
-    pk.util.load_spice_kernel('de432s.bsp')
+    pk.util.load_spice_kernel('de430.bsp')
     
     # All parameters taken from: https://ssd.jpl.nasa.gov/astro_par.html
     # (and for Titan from: https://solarsystem.nasa.gov/moons/saturn-moons/titan/by-the-numbers/)
@@ -268,16 +268,12 @@ if __name__ == "__main__":
     # We solve it!!
         
     
-    alg_glob = pg.algorithm(pg.mbh(algo=pg.algorithm(pg.de1220(gen=500,ftol=1e-19,xtol=1e-19)),stop=3,perturb=.9))
+    alg_glob = pg.algorithm(pg.mbh(algo=pg.algorithm(pg.sade(gen=5000,ftol=1e-19,xtol=1e-19)),stop=3,perturb=.9))
     alg_loc = pg.nlopt('bobyqa')
-    alg_loc.ftol_abs = 1e-20
-    alg_loc.ftol_rel = 1e-20
-    alg_loc.xtol_abs = 1e-20
-    alg_loc.xtol_rel = 1e-20
     alg_loc = pg.algorithm(alg_loc)
     
     verb = 500
-    pop_num = 1000
+    pop_num = 100
     
     pop = pg.population(prob=udp,size=pop_num)    
     

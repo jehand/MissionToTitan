@@ -49,7 +49,7 @@ class TitanChemicalUDP(mga_1dsm):
             seq=sequence,
             t0=[pk.epoch_from_string("1997-JAN-01 00:00:00.000"), pk.epoch_from_string("1997-DEC-31 00:00:00.000")],
             tof=2500,
-            vinf=[1, 5],
+            vinf=[4, 5],
             add_vinf_dep=False,
             add_vinf_arr=True,
             tof_encoding='eta',
@@ -269,28 +269,28 @@ if __name__ == "__main__":
     # We solve it!!
         
     
-    # alg_glob = pg.algorithm(pg.mbh(algo=pg.algorithm(pg.sade(gen=5000,ftol=1e-19,xtol=1e-19)),stop=3,perturb=.9))
-    # alg_loc = pg.nlopt('bobyqa')
-    # alg_loc = pg.algorithm(alg_loc)
+    alg_glob = pg.algorithm(pg.mbh(algo=pg.algorithm(pg.gaco(gen=2000)),stop=7,perturb=1))
+    alg_loc = pg.nlopt('cobyla')
+    alg_loc = pg.algorithm(alg_loc)
     
-    # verb = 500
-    # pop_num = 100
+    verb = 500
+    pop_num = 1000
     
-    # pop = pg.population(prob=udp,size=pop_num)    
+    pop = pg.population(prob=udp,size=pop_num)    
     
-    # alg_glob.set_verbosity(verb)
-    # alg_loc.set_verbosity(verb)
+    alg_glob.set_verbosity(verb)
+    alg_loc.set_verbosity(verb)
     
-    # print('Global opt')
-    # pop = alg_glob.evolve(pop)
+    print('Global opt')
+    pop = alg_glob.evolve(pop)
     
-    # print('starting local optimizer')
-    # pop = alg_loc.evolve(pop)
+    print('starting local optimizer')
+    pop = alg_loc.evolve(pop)
     
 
 
-    # champion = pop.champion_x
-    # udp.pretty(champion)
+    champion = pop.champion_x
+    udp.pretty(champion)
 
     
     # print(pg.problem(udp).feasibility_x(champion))
@@ -300,16 +300,16 @@ if __name__ == "__main__":
     
     # mpl.rcParams['legend.fontsize'] = 6
     
-    fig = plt.figure()
-    axis = fig.add_subplot(projection='3d')
-    udp.plot([-7.93317459e+02,  9.46312140e-01,  3.86191253e-01,  3.97920748e+03,
-      7.24980923e-01,  7.48075354e-02,  4.59262635e+00,  1.58578898e+00,
-      4.19396583e-01,  1.80123171e-01,  4.32493584e+00,  1.10000622e+00,
-      1.05229434e-02,  2.85468085e-02, -1.55886225e+00,  1.10002510e+00,
-      1.07062882e-02,  2.65583612e-01, -1.58693224e+00,  1.85045334e+02,
-      2.36245211e-02,  8.43569703e-01], ax=axis)
-    axis.legend(fontsize=6)
-    plt.show()
+    # fig = plt.figure()
+    # axis = fig.add_subplot(projection='3d')
+    # udp.plot([-7.93317459e+02,  9.46312140e-01,  3.86191253e-01,  3.97920748e+03,
+    #   7.24980923e-01,  7.48075354e-02,  4.59262635e+00,  1.58578898e+00,
+    #   4.19396583e-01,  1.80123171e-01,  4.32493584e+00,  1.10000622e+00,
+    #   1.05229434e-02,  2.85468085e-02, -1.55886225e+00,  1.10002510e+00,
+    #   1.07062882e-02,  2.65583612e-01, -1.58693224e+00,  1.85045334e+02,
+    #   2.36245211e-02,  8.43569703e-01], ax=axis)
+    # axis.legend(fontsize=6)
+    # plt.show()
     
     
     """

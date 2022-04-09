@@ -13,9 +13,9 @@ import pygmo as pg
 global_algo_dic = {"SADE": pg.sade(gen=5000, ftol=1e-10, xtol=1e-10),
                    "DE": pg.de(),
                    "GACO": pg.gaco(gen=5000),
-                   "DE_1220": pg.de1220(gen=500, ftol=1e-10, xtol=1e-10),
+                   "DE_1220": pg.de1220(gen=5000, ftol=1e-10, xtol=1e-10),
                    "GWO": pg.gwo(gen=5000),
-                   "IHS": pg.ihs(gen=500),
+                   "IHS": pg.ihs(gen=5000),
                    "PSO": pg.pso(),
                    "GPSO": pg.pso_gen(gen=5000),
                    "SEA": pg.sea(),
@@ -172,7 +172,7 @@ if __name__ == "__main__":
     output_filename = "results/algorithm_comparison.csv"
     
     # Testing the analysis function
-    planetary_sequence = [earth,venus,earth,jupiter,saturn]
+    planetary_sequence = [earth,venus,venus,earth,jupiter,saturn]
     udp = TitanChemicalUDP(sequence=planetary_sequence, constrained=False)
     
     # Run all algos with python multiprocessing

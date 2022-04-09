@@ -56,7 +56,7 @@ class TitanChemicalUDP(mga_1dsm):
 
         super().__init__(
             seq=sequence,
-            t0=[pk.epoch_from_string("1997-JAN-01 00:00:00.000"), pk.epoch_from_string("1997-DEC-31 00:00:00.000")],
+            t0=[pk.epoch_from_string("2030-JAN-01 00:00:00.000"), pk.epoch_from_string("2032-DEC-31 00:00:00.000")],
             tof=3500,
             vinf=[1, 5],
             add_vinf_dep=False,

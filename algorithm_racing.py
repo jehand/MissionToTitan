@@ -10,11 +10,17 @@ from display_style import bcolors
 from ast import literal_eval
 import pygmo as pg
 
-global_algo_dic = {"SADE": pg.sade(gen=5000, ftol=1e-10, xtol=1e-10),
+global_algo_dic = {"SADE": pg.sade(gen=2500, ftol=1e-10, xtol=1e-10),
                    "DE": pg.de(),
+<<<<<<< HEAD
                    "GACO": pg.gaco(gen=5000),
                    "DE_1220": pg.de1220(gen=5000, ftol=1e-10, xtol=1e-10),
                    "GWO": pg.gwo(gen=5000),
+=======
+                   "GACO": pg.gaco(gen=2500),
+                   "DE_1220": pg.de1220(gen=2500, ftol=1e-10, xtol=1e-10),
+                   "GWO": pg.gwo(gen=2500),
+>>>>>>> f8ae458702b296c76a7dc0c5728d3cd32db91abd
                    "IHS": pg.ihs(gen=5000),
                    "PSO": pg.pso(),
                    "GPSO": pg.pso_gen(gen=5000),
@@ -69,7 +75,7 @@ def analysis(args):
     udp, algos, case = args
     spice_kernels()
     
-    pop_n = 1000
+    pop_n = 500
     pop = pg.population(udp, pop_n)
     try:
         alg_glob_no_mbh = pg.algorithm(global_algo_dic[algos[0]])
@@ -167,9 +173,9 @@ if __name__ == "__main__":
     spice_kernels()
     venus, earth, mars, jupiter, saturn, titan = load_spice()
     
-    global_algos = list(global_algo_dic.keys()) #["SADE", "DE", "GACO"]
-    local_algos = ["COMPASS", "NLOPT-BOBYQA", "NLOPT-PRAXIS", "NLOPT-COBYLA", "NLOPT-SLSQP", "NLOPT-MMA"]
-    output_filename = "results/algorithm_comparison.csv"
+    global_algos = ["DE_1220","GACO","SADE"]
+    local_algos = ["NLOPT-BOBYQA", "NLOPT-PRAXIS", "NLOPT-COBYLA","NLOPT-SLSQP"]
+    output_filename = "results/algorithm_comparison_mk.csv"
     
     # Testing the analysis function
     planetary_sequence = [earth,venus,venus,earth,jupiter,saturn]

@@ -12,15 +12,9 @@ import pygmo as pg
 
 global_algo_dic = {"SADE": pg.sade(gen=2500, ftol=1e-10, xtol=1e-10),
                    "DE": pg.de(),
-<<<<<<< HEAD
-                   "GACO": pg.gaco(gen=5000),
-                   "DE_1220": pg.de1220(gen=5000, ftol=1e-10, xtol=1e-10),
-                   "GWO": pg.gwo(gen=5000),
-=======
                    "GACO": pg.gaco(gen=2500),
                    "DE_1220": pg.de1220(gen=2500, ftol=1e-10, xtol=1e-10),
                    "GWO": pg.gwo(gen=2500),
->>>>>>> f8ae458702b296c76a7dc0c5728d3cd32db91abd
                    "IHS": pg.ihs(gen=5000),
                    "PSO": pg.pso(),
                    "GPSO": pg.pso_gen(gen=5000),

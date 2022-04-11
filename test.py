@@ -13,6 +13,8 @@ from pykep.planet import jpl_lp
 import networkx as nx
 import matplotlib.pyplot as plt
 import numpy as np
+import pykep as pk
+from pykep.trajopt import mga
 
 global_algo_dic = {"SADE": pg.sade(gen=5000, ftol=1e-10, xtol=1e-10),
                    "DE": pg.de(),
@@ -106,7 +108,21 @@ if __name__ == "__main__":
 
     # Testing the analysis function
     planetary_sequence = [earth,venus,venus,earth,jupiter,saturn]
-    udp = TitanChemicalUDP(sequence=planetary_sequence)
+    #udp = TitanChemicalUDP(sequence=planetary_sequence)
+
+    # Making a new mga function
+    udp = mga(
+                seq=planetary_sequence,
+                t0=[pk.epoch_from_string("1997-JAN-01 00:00:00.000"), pk.epoch_from_string("1997-DEC-31 00:00:00.000")],
+                tof=2500,
+                vinf=4.25,
+                tof_encoding='eta',
+                multi_objective=False,
+                orbit_insertion=True,
+                e_target=.9823,
+                rp_target=78232 * 1e3,
+                max_revs= 3,
+            )
 
     # Defining the algo
     start_time = dt.now()
@@ -123,7 +139,7 @@ if __name__ == "__main__":
 
     allowed_variants = list(range(1,19))
     for var in variant_adptvs:
-        algorithm = pg.algorithm(pg.de1220(gen=500, variant_adptv=var, ftol=1e-10, xtol=1e-10, allowed_variants=allowed_variants))
+        algorithm = pg.algorithm(pg.de1220(gen=300, variant_adptv=var, ftol=1e-10, xtol=1e-10, allowed_variants=allowed_variants))
         isls.append(pg.island(algo=pg.mbh(algo=algorithm, stop=3, perturb=0.25), prob=udp, size=pop_size))
 
     archi = pg.archipelago()
@@ -137,8 +153,12 @@ if __name__ == "__main__":
         
     sols = archi.get_champions_f()
     idx = sols.index(min(sols))
-    end_time = dt.now()    
+    end_time = dt.now()
 
     print("Time Taken =", end_time-start_time)
     print("Best DV = {:.2f} km/s".format(sols[idx][0]/1000))
     
+    best_x = archi.get_champions_x()[idx]
+    udp.pretty(best_x)
+    udp.plot(best_x)
+    plt.show()

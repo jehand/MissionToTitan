@@ -47,15 +47,9 @@ class TitanChemicalUDP(mga_1dsm):
 
         super().__init__(
             seq=sequence,
-<<<<<<< HEAD
-            t0=[pk.epoch_from_string("2030-JAN-01 00:00:00.000"), pk.epoch_from_string("2032-DEC-31 00:00:00.000")],
-            tof=3500,
-            vinf=[1, 5],
-=======
             t0=[pk.epoch_from_string("1997-JAN-01 00:00:00.000"), pk.epoch_from_string("1997-DEC-31 00:00:00.000")],
             tof=2500,
             vinf=[4, 5],
->>>>>>> f8ae458702b296c76a7dc0c5728d3cd32db91abd
             add_vinf_dep=False,
             add_vinf_arr=True,
             tof_encoding='eta',
@@ -196,7 +190,7 @@ class TitanChemicalUDP(mga_1dsm):
         return retval
 
     def gradient(self, x):
-        return pg.estimate_gradient_h(lambda x: self.fitness(x), x)
+        return pg.estimate_gradient(lambda x: self.fitness(x), x)
 
     def pretty(self, x):
         """

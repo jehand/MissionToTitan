@@ -47,8 +47,8 @@ class TitanChemicalUDP(mga_1dsm):
 
         super().__init__(
             seq=sequence,
-            t0=[pk.epoch_from_string("1997-JAN-01 00:00:00.000"), pk.epoch_from_string("1997-DEC-31 00:00:00.000")],
-            tof=2500,
+            t0=[pk.epoch_from_string("2027-JAN-01 00:00:00.000"), pk.epoch_from_string("2027-DEC-31 00:00:00.000")],
+            tof=3650,
             vinf=[4, 5],
             add_vinf_dep=False,
             add_vinf_arr=True,
@@ -263,18 +263,18 @@ if __name__ == "__main__":
 
 
     # Defining the sequence and the problem
-    planetary_sequence = [earth,venus,venus,earth,jupiter,saturn]
+    planetary_sequence = [earth,venus,earth,earth,earth,saturn]
     udp = TitanChemicalUDP(sequence=planetary_sequence, constrained=False)
     print(udp)
     # We solve it!!
         
     
-    alg_glob = pg.algorithm(pg.mbh(algo=pg.algorithm(pg.gaco(gen=2000)),stop=7,perturb=1))
+    alg_glob = pg.algorithm(pg.mbh(algo=pg.algorithm(pg.gaco(gen=500)),stop=3,perturb=1))
     alg_loc = pg.nlopt('cobyla')
     alg_loc = pg.algorithm(alg_loc)
     
     verb = 500
-    pop_num = 1000
+    pop_num = 20000
     
     pop = pg.population(prob=udp,size=pop_num)    
     

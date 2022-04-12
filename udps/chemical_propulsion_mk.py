@@ -190,7 +190,7 @@ class TitanChemicalUDP(mga_1dsm):
         return retval
 
     def gradient(self, x):
-        return pg.estimate_gradient_h(lambda x: self.fitness(x), x)
+        return pg.estimate_gradient(lambda x: self.fitness(x), x)
 
     def pretty(self, x):
         """

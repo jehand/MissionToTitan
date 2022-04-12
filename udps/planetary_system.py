@@ -5,12 +5,6 @@ from pykep.core import epoch, DAY2SEC, MU_SUN, lambert_problem, AU, epoch, SEC2D
 import pygmo as pg
 import matplotlib.pyplot as plt
 
-try:
-    from algorithms import Algorithms
-except:
-    import sys
-    sys.path.append(sys.path[0]+"/udps")
-    from algorithms import Algorithms
     
 def norm(x):
     return np.sqrt(sum([it * it for it in x]))

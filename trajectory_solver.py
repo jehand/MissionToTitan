@@ -3,6 +3,7 @@ import pykep as pk
 import pygmo as pg
 from pykep.core import epoch, DAY2YEAR
 from udps.chemical_propulsion2 import TitanChemicalUDP
+from udps.chemical_mga import TitanChemicalMGAUDP
 from udps.algorithms import Algorithms
 from udps.planetary_system import PlanetToSatellite
 import matplotlib.pyplot as plt
@@ -191,12 +192,14 @@ class TrajectorySolver():
         #alg_loc = pg.algorithm(pg.nlopt('bobyqa'))
 
         pop_num = 20
-
         pop = pg.population(interplanetary_udp,pop_num)
         pop = alg_glob.evolve(pop)
         #pop = alg_loc.evolve(pop)
 
         champion_interplanetary = pop.champion_x
+
+        ### CHANGE THIS TO NOT INCLUDE THE ARRIVAL DV, EVEN THOUGH THAT'S INCLUDED IN THE OPTIMIZATION
+
         DV = pop.champion_f
         
         return champion_interplanetary, DV
@@ -422,8 +425,9 @@ if __name__ == "__main__":
     departure_dates = []
     target_orbit = [titan.radius * 2, 0.1]
     
-    trajectory = TrajectorySolver(TitanChemicalUDP, PlanetToSatellite)
-    
+    #trajectory = TrajectorySolver(TitanChemicalUDP, PlanetToSatellite)
+    trajectory = TrajectorySolver(TitanChemicalMGAUDP, PlanetToSatellite)
+
     champ_inter, champ_plan = trajectory.entire_trajectory(sequence=sequence, departure_dates=departure_dates,
                                                            target_satellite=titan,
                                                            target_orbit=target_orbit)

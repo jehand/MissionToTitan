@@ -32,19 +32,20 @@ class TitanChemicalMGAUDP(mga):
        5) Remove the time constraint
     """
 
-    def __init__(self, sequence, constrained=False):
+    def __init__(self, sequence, departure_range=[pk.epoch_from_string("1997-JAN-01 00:00:00.000"), pk.epoch_from_string("1997-DEC-31 00:00:00.000")], constrained=False):
         """
         The Titan problem of the trajectory gym consists in 48 different instances varying in fly-by sequence and
         the presence of a time constraint.
         Args:
             - sequence (``array``): The sequence defines the fly-by sequence as pykep planet objects.
+            - departure_range (``array``): The range of departure dates as [lower bound, upper bound]
             - constrained (``bool``): Activates the constraint on the time of flight
               (fitness will thus return two numbers, the objective function and the inequality constraint violation).
         """
 
         super().__init__(
             seq=sequence,
-            t0=[pk.epoch_from_string("1997-JAN-01 00:00:00.000"), pk.epoch_from_string("1997-DEC-31 00:00:00.000")],
+            t0=departure_range,
             tof=3000,
             vinf=4.25,
             tof_encoding='eta',
@@ -179,17 +180,17 @@ class TitanChemicalMGAUDP(mga):
 
         print("Time of flights: ", T, "[days]")
         
-        print("Total DV = {:.3f} km/s".format((DVlaunch + np.sum(DVfb) + DVarrival)/1000))
+        print("Total DV (excluding arrival) = {:.3f} km/s".format((DVlaunch + np.sum(DVfb))/1000))
         print("Time of departure =", pk.epoch(x[0]))
         print("Arrival date =", pk.epoch(x[0] + sum(T)))
         print("Total Time of Flight =", sum(T)/365, "[years] or", sum(T), "[days]")
 
-    def plot(self, x, axes=None, units=AU, N=60):
-        """plot(self, x, axes=None, units=pk.AU, N=60)
+    def plot(self, x, ax=None, units=AU, N=60):
+        """plot(self, x, ax=None, units=pk.AU, N=60)
         Plots the spacecraft trajectory.
         Args:
             - x (``tuple``, ``list``, ``numpy.ndarray``): Decision chromosome.
-            - axes (``matplotlib.axes._subplots.Axes3DSubplot``): 3D axes to use for the plot
+            - ax (``matplotlib.axes._subplots.Axes3DSubplot``): 3D axes to use for the plot
             - units (``float``, ``int``): Length unit by which to normalise data.
             - N (``float``): Number of points to plot per leg
         """
@@ -200,10 +201,10 @@ class TitanChemicalMGAUDP(mga):
         from pykep.orbit_plots import plot_planet, plot_lambert
 
         # Creating the axes if necessary
-        if axes is None:
+        if ax is None:
             mpl.rcParams['legend.fontsize'] = 10
             fig = plt.figure()
-            axes = fig.gca(projection='3d')
+            ax = fig.gca(projection='3d')
 
         _, _, _, l, _, T, _, _ = self._compute_dvs(x)
         ep = np.insert(T, 0, x[0])  # [t0, T1, T2 ...]
@@ -211,11 +212,11 @@ class TitanChemicalMGAUDP(mga):
         
         for pl, e in zip(self.seq, ep):
             plot_planet(pl, epoch(e), units=units, legend=True,
-                        color=(0.7, 0.7, 1), axes=axes)
+                        color=(0.7, 0.7, 1), axes=ax)
         for lamb in l:
             plot_lambert(lamb, N=N, sol=0, units=units, color='k',
-                         legend=False, axes=axes, alpha=0.8)
-        return axes
+                         legend=False, axes=ax, alpha=0.8)
+        return ax
 
     def __repr__(self):
         return "AEON MGA (Trajectory Optimisation for a Rendezvous with Titan)"

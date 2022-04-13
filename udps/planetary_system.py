@@ -60,7 +60,7 @@ class PlanetToSatellite:
         self.starting_safe_radius = starting_planet.safe_radius / self.initial_planet_radius
     
     def get_bounds(self):
-        lb = [self.starting_safe_radius , 0, 0, self.tof[0]]
+        lb = [self.starting_safe_radius, 0, 0, self.tof[0]]
         ub = [self.r_start_max, 1, 1, self.tof[1]]
         return (lb, ub)
     

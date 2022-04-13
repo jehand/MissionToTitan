@@ -126,14 +126,15 @@ class TrajectorySolver():
         self.interplanetary_problem = interplanetary_udp
         self.planetary_problem = planetary_udp
 
-    def define_interplanetary(self, sequence):
+    def define_interplanetary(self, sequence, departure_range=None):
         """
         This is used to define the interplanetary udp with respect to their sequence
 
         Args:
             sequence (``array(pykep.planet)``)       : the sequence of planets to visit in the interplanetary phase
+            departure_range (``array(pykep.epoch)``) : the range of departure dates as [lower bound, upper bound]
         """
-        return self.interplanetary_problem(sequence)
+        return self.interplanetary_problem(sequence, departure_range)
 
     def define_planetary(self, starting_planet, target_satellite, starting_time, target_orbit, v=None):
         """
@@ -155,7 +156,7 @@ class TrajectorySolver():
             return self.planetary_problem(starting_time, target_orbit[0], target_orbit[1], starting_planet, target_satellite, 
                                                 tof=[10,100], r_start_max=15, initial_insertion=True, v_inf=v, max_revs=5)
 
-    def interplanetary_trajectory(self, sequence, departure_range):
+    def interplanetary_trajectory(self, sequence, departure_range=None):
         """
         This class is used to solve for a single trajectory or to run a DoE on the sequences. 
         
@@ -169,7 +170,7 @@ class TrajectorySolver():
                                                     r_target is in m
         """
         # Define the interplanetary problem
-        interplanetary_udp = self.define_interplanetary(sequence) ##### Need to add departure date etc.
+        interplanetary_udp = self.define_interplanetary(sequence, departure_range)
         self.interplanetary_udp = interplanetary_udp
         self.departure_range = departure_range
         self.sequence = sequence
@@ -198,8 +199,6 @@ class TrajectorySolver():
 
         champion_interplanetary = pop.champion_x
 
-        ### CHANGE THIS TO NOT INCLUDE THE ARRIVAL DV, EVEN THOUGH THAT'S INCLUDED IN THE OPTIMIZATION
-
         DV = pop.champion_f
         
         return champion_interplanetary, DV
@@ -214,7 +213,8 @@ class TrajectorySolver():
         """
         
         # Take the decision chromosome from the interplanetary phase as inputs for the Saturnian system
-        DV, lamberts, T, ballistic_legs, ballistic_ep = self.interplanetary_udp._compute_dvs(champion_interplanetary)
+        #DV, lamberts, T, ballistic_legs, ballistic_ep = self.interplanetary_udp._compute_dvs(champion_interplanetary)
+        DVlaunch, DVfb, DVarrival, lamberts, DVlaunch_tot, T, _, _ = self.interplanetary_udp._compute_dvs(champion_interplanetary)
         
         # Time reaching final interplanetary planet as a pykep epoch
         t = epoch(champion_interplanetary[0] + sum(T))
@@ -298,12 +298,14 @@ class TrajectorySolver():
             champ_planetary (``array``)      : the solution decision chromosome for the planetary sequence
         """
         # Give overall results for both legs
-        DV = self.interplanetary_udp.fitness(champ_interplanetary)[0]
+        DVlaunch, DVfb, DVarrival, _, _, T, _, _ = self.interplanetary_udp._compute_dvs(champ_interplanetary)
+        DV = DVlaunch + sum(DVfb)
+        #DV = self.interplanetary_udp.fitness(champ_interplanetary)[0]
         DV += self.planetary_udp.fitness(champ_planetary)[0]
         
         t_departure = champ_interplanetary[0]
                 
-        _, _, T, _, _ = self.interplanetary_udp._compute_dvs(champ_interplanetary)
+        #_, _, T, _, _ = self.interplanetary_udp._compute_dvs(champ_interplanetary)
         tof = sum(T) + champ_planetary[-1]
         t = tof + t_departure
         
@@ -341,8 +343,8 @@ class TrajectorySolver():
             
             print("Total DV: {0:.4g}".format(DV/1000), "km/s")
             print("Departure Date: {} ({} mjd2000)".format(t_departure, t_departure.mjd2000))
-            print("Total Flight Time: {0:.4g}".format(T*DAY2YEAR), "years ({0:.7g}".format(T), "days)")
             print("Arrival Date: {} ({} mjd2000)".format(t_arrival, t_arrival.mjd2000))
+            print("Total Flight Time: {0:.4g}".format(T*DAY2YEAR), "years ({0:.7g}".format(T), "days)")
             print("\n")
     
     def plot(self, champ_interplanetary=None, champ_planetary=None):
@@ -422,7 +424,7 @@ if __name__ == "__main__":
     
     sequence = [earth, venus, earth, jupiter, saturn]
     target_satellite = titan
-    departure_dates = []
+    departure_dates = [pk.epoch_from_string("1997-JAN-01 00:00:00.000"), pk.epoch_from_string("1997-DEC-31 00:00:00.000")]
     target_orbit = [titan.radius * 2, 0.1]
     
     #trajectory = TrajectorySolver(TitanChemicalUDP, PlanetToSatellite)
@@ -433,4 +435,4 @@ if __name__ == "__main__":
                                                            target_orbit=target_orbit)
     
     trajectory.pretty(champ_inter, champ_plan)
-    #trajectory.plot(champ_inter, champ_plan)
+    trajectory.plot(champ_inter, champ_plan)

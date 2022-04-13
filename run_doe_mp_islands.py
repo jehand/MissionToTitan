@@ -1,18 +1,30 @@
 import os
 from multiprocessing import Pool, cpu_count, set_start_method
 from csv import DictWriter, DictReader
-from udps.chemical_propulsion2 import TitanChemicalUDP
+from udps.chemical_mga import TitanChemicalMGAUDP
 from udps.planetary_system import PlanetToSatellite
 from trajectory_solver import TrajectorySolver, load_spice, spice_kernels
 from itertools import repeat
 from datetime import datetime as dt
 from display_style import bcolors
 from ast import literal_eval
+import pykep as pk
+from pykep.planet import jpl_lp
+from mpi4py import MPI
 
 # Instantiate the class once from the start and don't do it again
-interplanetary_udp = TitanChemicalUDP
+interplanetary_udp = TitanChemicalMGAUDP
 planetary_udp = PlanetToSatellite
 trajectory = TrajectorySolver(interplanetary_udp, planetary_udp)
+
+# Instantiate MPI
+comm = MPI.COMM_WORLD
+rank = comm.Get_rank()
+nprocs = comm.Get_size()
+
+def split(a, n):
+    k, m = divmod(len(a), n)
+    return (a[i*k+min(i, m):(i+1)*k+min(i+1, m)] for i in range(n))
 
 def traj_analysis(args):
     """
@@ -21,7 +33,6 @@ def traj_analysis(args):
     Args:
         args (``array``) : contains all the arguments needed to run the trajectory solver and also contains the case number
     """
-    spice_kernels()
     sequence, departure_dates, target_satellite, target_orbit, case = args
     
     try:
@@ -35,17 +46,6 @@ def traj_analysis(args):
                 "t_arrive":None, "tof":None, "t_phases":None, "champ_inter":None, "champ_plan":None}
         
     return data
-
-# def load_interp(filepath):
-#     """
-#     Loads an interpolated planet object
-
-#     Args:
-#         filepath (``string``): the path to the planet object
-#     """
-#     with open(filepath, "rb") as inp:
-#             planet_new = pickle.load(inp)
-#     return planet_new
 
 def extract_seqs(doe_filename, planet_dic, add_start_end=False, starting=None, ending=None):
     """
@@ -82,6 +82,7 @@ def main(doe_filename, planet_dic, out_filename, departure_window, target_satell
         writer = DictWriter(csv_f, ["case_no","sequence","total_DV","t_depart","t_arrive",
                                     "tof","t_phases","champ_inter","champ_plan"])
         writer.writeheader()
+        csv_f.flush()
         
         # Get all the sequences
         sequences = extract_seqs(doe_filename, planet_dic, append_seq, start_seq, end_seq)
@@ -92,14 +93,15 @@ def main(doe_filename, planet_dic, out_filename, departure_window, target_satell
         all_cases = list(zip(sequences, repeat(departure_window), repeat(target_satellite), 
                              repeat(target_orbit), range(cases)))
         
-        # Set up the multiprocessor and run
+        # Set up MPI and run
+        all_cases = list(split(all_cases, nprocs))
+        all_cases = comm.scatter(all_cases, root=0)
+        print('Process {} has data:'.format(rank), all_cases)
         print(f"{bcolors.BOLD}{bcolors.OKCYAN}Running DoE ...{bcolors.ENDC}\n")
-        p = Pool(processes=cpu_count()-2)
-        results = p.imap_unordered(traj_analysis, all_cases)
-        p.close()
 
         # Write the result every time one is received
-        for i, result in enumerate(results):
+        for i, case in enumerate(all_cases):
+            result = traj_analysis(case)
             if result["total_DV"] == "FAILED":
                 color = bcolors.FAIL
                 success = "FAIL"
@@ -199,13 +201,14 @@ def plot_doe_result(doe_filename, sequence, planets, target, target_orbit):
 if __name__ == "__main__":
     set_start_method("spawn")
     spice_kernels()
-    venus, earth, mars, jupiter, saturn, titan = load_spice()
+    titan = load_spice()[-1]
+    venus, earth, mars, jupiter, saturn, _ = [jpl_lp("venus"), jpl_lp("earth"), jpl_lp("mars"), jpl_lp("jupiter"), jpl_lp("saturn"), None]
     
     start = dt.now()
     input_filename = "examples_tests/test.csv"
     output_filename = "results/AEON_" + dt.date(start).isoformat() + ".csv"
     planet_dic = {1:earth, 2:venus, 3:mars, 4:jupiter, 5:None}
-    departure_window = [] #### NEED TO FIX THIS EVENTUALLY
+    departure_window = [pk.epoch_from_string("1997-JAN-01 00:00:00.000"), pk.epoch_from_string("1997-DEC-31 00:00:00.000")]
     target = titan
     target_orbit = [titan.radius * 2, 0.1]
     

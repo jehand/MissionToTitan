@@ -5,12 +5,12 @@ from pykep.core import epoch, DAY2SEC, MU_SUN, lambert_problem, AU, epoch, SEC2D
 import pygmo as pg
 import matplotlib.pyplot as plt
 
-try:
-    from algorithms import Algorithms
-except:
-    import sys
-    sys.path.append(sys.path[0]+"/udps")
-    from algorithms import Algorithms
+# try:
+#     from algorithms import Algorithms
+# except:
+#     import sys
+#     sys.path.append(sys.path[0]+"/udps")
+#     from algorithms import Algorithms
     
 def norm(x):
     return np.sqrt(sum([it * it for it in x]))
@@ -197,16 +197,28 @@ if __name__ == "__main__":
     start_time = pk.epoch_from_string("2021-DEC-28 11:58:50.816")
     r_target = titan.radius * 2
     e_target = 0.1
-    tof = [1, 50]
-    r_start_max = 15
+    tof = [1, 400]
+    r_start_max = 30
     
     udp = PlanetToSatellite(start_time, r_target, e_target, saturn, titan, tof, r_start_max, initial_insertion=True, 
-                          v_inf=[2000, 6000, -3000], max_revs=5)
+                          v_inf=[-4361.450660605015, -3656.110883139835, 113.24655422161563], max_revs=5)
     prob = pg.problem(udp)
     
-    sol = Algorithms(problem=udp)
-    uda = sol.augmented_lagrangian(local_algo="slsqp")
-    champion = sol.archipelago(uda, islands=8, island_population=100)
+    alg_glob = pg.algorithm(pg.mbh(algo=pg.algorithm(pg.gaco(gen=500)),stop=3,perturb=1))
+    alg_loc = pg.nlopt('cobyla')
+    alg_loc = pg.algorithm(alg_loc)
+    
+    pop_num = 200
+    
+    pop = pg.population(prob=udp,size=pop_num)    
+    
+    print('Global opt')
+    pop = alg_glob.evolve(pop)
+    
+    print('Starting local optimizer')
+    pop = alg_loc.evolve(pop)
+
+    champion = pop.champion_x
     
     udp.pretty(champion)
     udp.plot(champion)

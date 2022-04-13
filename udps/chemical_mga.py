@@ -11,12 +11,12 @@ import matplotlib.pyplot as plt
 
 try:
     from rockets import launchers
-    from algorithms import Algorithms
+    #from algorithms import Algorithms
 except:
     import sys
     sys.path.append(sys.path[0]+"/udps")
     from rockets import launchers
-    from algorithms import Algorithms
+    #from algorithms import Algorithms
 
 class TitanChemicalMGAUDP(mga):
     """

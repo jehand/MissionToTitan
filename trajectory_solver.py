@@ -2,14 +2,15 @@ import numpy as np
 import pykep as pk
 import pygmo as pg
 from pykep.core import epoch, DAY2YEAR
-from udps.chemical_propulsion2 import TitanChemicalUDP
+#from udps.chemical_propulsion2 import TitanChemicalUDP
 from udps.chemical_mga import TitanChemicalMGAUDP
-from udps.algorithms import Algorithms
+#from examples_tests.algorithms import Algorithms
 from udps.planetary_system import PlanetToSatellite
 import matplotlib.pyplot as plt
 import matplotlib
 import os.path
 from display_style import bcolors
+from define_algorithms import interplanetary_algorithm, planetary_algorithm
 
 try:
     matplotlib.use('Qt5Agg')
@@ -176,30 +177,11 @@ class TrajectorySolver():
         self.sequence = sequence
           
         # We solve it!!
-        uda = pg.nlopt('bobyqa') 
-        uda.ftol_rel = 1e-12
-        uda = pg.algorithm(uda)
-        # #uda.set_verbosity(100)
-        # archi = pg.archipelago(algo=uda, prob=interplanetary_udp, n=8, pop_size=20)
-
-        # archi.evolve(20)
-        # archi.wait()
-        # sols = archi.get_champions_f()
-        # sols2 = [item[0] for item in sols]
-        # idx = sols2.index(min(sols2))
-        # DV = sols2[idx]
-        # champion_interplanetary = archi.get_champions_x()[idx]
-        alg_glob = pg.algorithm(pg.sade())
-        #alg_loc = pg.algorithm(pg.nlopt('bobyqa'))
-
-        pop_num = 20
-        pop = pg.population(interplanetary_udp,pop_num)
-        pop = alg_glob.evolve(pop)
-        #pop = alg_loc.evolve(pop)
-
-        champion_interplanetary = pop.champion_x
-
-        DV = pop.champion_f
+        solved_archipelago = interplanetary_algorithm(interplanetary_udp)
+        sols = solved_archipelago.get_champions_f()
+        idx = sols.index(min(sols))
+        champion_interplanetary = solved_archipelago.get_champions_x()[idx]
+        DV = sols[idx]
         
         return champion_interplanetary, DV
     

@@ -110,15 +110,15 @@ if __name__ == "__main__":
     venus, earth, mars, jupiter, saturn, titan = [jpl_lp("venus"), jpl_lp("earth"), jpl_lp("mars"), jpl_lp("jupiter"), jpl_lp("saturn"), None]#load_spice()
 
     # Testing the analysis function
-    planetary_sequence = [earth,venus,earth,earth,earth,saturn]
+    planetary_sequence = [earth,venus,venus,earth,jupiter,saturn]
     #udp = TitanChemicalUDP(sequence=planetary_sequence)
 
     # Making a new mga function
     udp = mga(
                 seq=planetary_sequence,
-                t0=[pk.epoch_from_string("2027-JAN-01 00:00:00.000"), pk.epoch_from_string("2027-DEC-31 00:00:00.000")],
-                tof=3500,
-                vinf=3.92,
+                t0=[pk.epoch_from_string("1997-JAN-01 00:00:00.000"), pk.epoch_from_string("1997-DEC-31 00:00:00.000")],
+                tof=2500,
+                vinf=4.25,
                 tof_encoding='eta',
                 multi_objective=False,
                 orbit_insertion=True,
@@ -129,8 +129,8 @@ if __name__ == "__main__":
 
     # Defining the algo
     start_time = dt.now()
-    pop_size = 100
-    isls = [pg.island(algo = local_algo_dic["COMPASS"], prob=udp, size=pop_size)]
+    pop_size = 150
+    isls = [pg.island(algo = local_algo_dic["NLOPT-COBYLA"], prob=udp, size=pop_size)]
 
     # variants = [5,1,2,5,1,2]
     # for var in variants:
@@ -142,8 +142,8 @@ if __name__ == "__main__":
 
     allowed_variants = list(range(1,19))
     for var in variant_adptvs:
-        algorithm = pg.algorithm(pg.de1220(gen=300, variant_adptv=var, ftol=1e-10, xtol=1e-10, allowed_variants=allowed_variants))
-        isls.append(pg.island(algo=pg.mbh(algo=algorithm, stop=3, perturb=0.5), prob=udp, size=pop_size))
+        algorithm = pg.algorithm(pg.de1220(gen=500, variant_adptv=var, ftol=1e-10, xtol=1e-10, allowed_variants=allowed_variants))
+        isls.append(pg.island(algo=pg.mbh(algo=algorithm, stop=5, perturb=.75), prob=udp, size=pop_size))
 
     archi = pg.archipelago()
     for isl in isls:
@@ -163,5 +163,5 @@ if __name__ == "__main__":
     
     best_x = archi.get_champions_x()[idx]
     udp.pretty(best_x)
-    udp.plot(best_x)
-    plt.show()
+    # udp.plot(best_x)
+    # plt.show()

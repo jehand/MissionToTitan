@@ -1,0 +1,19 @@
+#PBS -N running_doe
+#PBS -A GT-br97
+#PBS -l nodes=2:ppn=4
+#PBS -l pmem=6gb
+#PBS -l walltime=10:00
+#PBS -q embers
+#PBS -j oe
+#PBS -o doe.out
+#PBS -m abe
+#PBS -M jdastoor3@gatech.edu
+
+cd $PBS_O_WORKDIR
+module load anaconda3/2021.05
+module load gcc/4.9.0 mvapich2/2.1
+pip install --upgrade pykep
+pip install --upgrade pygmo
+
+mpi4py 
+python algorithm_racing.py

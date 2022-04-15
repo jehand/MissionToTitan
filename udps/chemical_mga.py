@@ -8,6 +8,7 @@ import numpy as np
 from math import log, acos, cos, sin, asin, exp, sqrt
 from typing import Any, Dict, List, Tuple
 import matplotlib.pyplot as plt
+from bisect import bisect_left
 
 try:
     from rockets import launchers
@@ -217,6 +218,57 @@ class TitanChemicalMGAUDP(mga):
             plot_lambert(lamb, N=N, sol=0, units=units, color='k',
                          legend=False, axes=ax, alpha=0.8)
         return ax
+
+    def get_eph_function(self, x: List[float]):
+        """
+        For a chromosome x, returns a function object eph to compute the ephemerides of the spacecraft
+        Args:
+            - x (``list``, ``tuple``, ``numpy.ndarray``): Decision chromosome, e.g. (``pygmo.population.champion_x``).
+        Example:
+          eph = prob.get_eph_function(population.champion_x)
+          pos, vel = eph(pykep.epoch(7000))
+        """
+        if len(x) != len(self.get_bounds()[0]):
+            raise ValueError(
+                "Expected chromosome of length "
+                + str(len(self.get_bounds()[0]))
+                + " but got length "
+                + str(len(x))
+            )
+
+        _, _, _, _, _, _, b_legs, b_ep = self._compute_dvs(x)
+        
+        def eph(
+            t: float
+        ) -> Tuple[Tuple[float, float, float], Tuple[float, float, float]]:
+
+            if t < b_ep[0]:
+                raise ValueError(
+                    "Given epoch " + str(t) + " is before launch date " + str(b_ep[0])
+                )
+
+            if t == b_ep[0]:
+                # exactly at launch
+                return self.seq[0].eph(t)
+
+            i = bisect_left(b_ep, t)  # ballistic leg i goes from planet i to planet i+1
+
+            assert i >= 1 and i <= len(b_ep)
+            if i < len(b_ep):
+                assert t <= b_ep[i]
+
+            # get start of ballistic leg
+            r_b, v_b = b_legs[i - 1]
+
+            elapsed_seconds = (t - b_ep[i - 1]) * DAY2SEC
+            assert elapsed_seconds >= 0
+
+            # propagate the lagrangian
+            r, v = propagate_lagrangian(r_b, v_b, elapsed_seconds, self.seq[0].mu_central_body)
+
+            return r, v
+        
+        return eph
 
     def __repr__(self):
         return "AEON MGA (Trajectory Optimisation for a Rendezvous with Titan)"

@@ -2,7 +2,7 @@ import os
 from multiprocessing import Pool, cpu_count, set_start_method
 from csv import DictWriter, DictReader
 from udps.chemical_mga import TitanChemicalMGAUDP
-from udps.planetary_system import PlanetToSatellite
+from udps.planetary_system2 import PlanetToSatellite
 from trajectory_solver import TrajectorySolver, load_spice, spice_kernels
 from itertools import repeat
 from datetime import datetime as dt
@@ -10,7 +10,7 @@ from display_style import bcolors
 from ast import literal_eval
 import pykep as pk
 from pykep.planet import jpl_lp
-from mpi4py import MPI
+#from mpi4py import MPI
 
 # Instantiate the class once from the start and don't do it again
 interplanetary_udp = TitanChemicalMGAUDP
@@ -18,9 +18,9 @@ planetary_udp = PlanetToSatellite
 trajectory = TrajectorySolver(interplanetary_udp, planetary_udp)
 
 # Instantiate MPI
-comm = MPI.COMM_WORLD
-rank = comm.Get_rank()
-nprocs = comm.Get_size()
+# comm = MPI.COMM_WORLD
+# rank = comm.Get_rank()
+# nprocs = comm.Get_size()
 
 def split(a, n):
     k, m = divmod(len(a), n)
@@ -67,7 +67,8 @@ def extract_seqs(doe_filename, planet_dic, add_start_end=False, starting=None, e
         seq = [planet_dic[int(planet)] for planet in str(row) if planet_dic[int(planet)] != None]
         if add_start_end: # adding the starting element
             seq = [starting] + seq + [ending]
-        sequences.append(seq)
+        if seq not in sequences:
+            sequences.append(seq)
     
     return sequences
     
@@ -94,9 +95,9 @@ def main(doe_filename, planet_dic, out_filename, departure_window, target_satell
                              repeat(target_orbit), range(cases)))
         
         # Set up MPI and run
-        all_cases = list(split(all_cases, nprocs))
-        all_cases = comm.scatter(all_cases, root=0)
-        print('Process {} has data:'.format(rank), all_cases)
+        #all_cases = list(split(all_cases, nprocs))
+        #all_cases = comm.scatter(all_cases, root=0)
+        #print('Process {} has data:'.format(rank), all_cases)
         print(f"{bcolors.BOLD}{bcolors.OKCYAN}Running DoE ...{bcolors.ENDC}\n")
 
         # Write the result every time one is received
@@ -201,16 +202,17 @@ def plot_doe_result(doe_filename, sequence, planets, target, target_orbit):
 if __name__ == "__main__":
     set_start_method("spawn")
     spice_kernels()
-    titan = load_spice()[-1]
-    venus, earth, mars, jupiter, saturn, _ = [jpl_lp("venus"), jpl_lp("earth"), jpl_lp("mars"), jpl_lp("jupiter"), jpl_lp("saturn"), None]
+    #titan = load_spice()[-1]
+    #venus, earth, mars, jupiter, saturn, _ = [jpl_lp("venus"), jpl_lp("earth"), jpl_lp("mars"), jpl_lp("jupiter"), jpl_lp("saturn"), None]
+    venus, earth, mars, jupiter, saturn, titan = load_spice()
     
     start = dt.now()
-    input_filename = "examples_tests/test.csv"
+    input_filename = "planet_factorial.csv"
     output_filename = "results/AEON_" + dt.date(start).isoformat() + ".csv"
     planet_dic = {1:earth, 2:venus, 3:mars, 4:jupiter, 5:None}
-    departure_window = [pk.epoch_from_string("1997-JAN-01 00:00:00.000"), pk.epoch_from_string("1997-DEC-31 00:00:00.000")]
+    departure_window = [pk.epoch_from_string("2030-JAN-01 00:00:00.000"), pk.epoch_from_string("2032-DEC-31 00:00:00.000")]
     target = titan
-    target_orbit = [titan.radius * 2, 0.1]
+    target_orbit = [titan.radius + 200*1e3, 0]
     
     main(input_filename, planet_dic, output_filename, departure_window, target, target_orbit, 
         start, append_seq=True, start_seq=earth, end_seq=saturn)

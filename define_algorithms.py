@@ -159,7 +159,6 @@ def interplanetary_algorithm(udp):
         archi.push_back(isl)
 
     archi.set_topology(topo(n_islands=len(isls)))
-    print(archi)
     print("Evolving Archipelago...")
     archi.evolve(3)
     archi.wait()
@@ -167,4 +166,11 @@ def interplanetary_algorithm(udp):
     return archi
 
 def planetary_algorithm(udp):
-    pass
+    pop_num = 300
+    pop = pg.population(prob=udp,size=pop_num) 
+     
+    alg_loc = pg.algorithm(pg.nlopt('bobyqa'))
+    pop = alg_loc.evolve(pop)
+
+    return pop
+    

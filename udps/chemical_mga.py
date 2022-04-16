@@ -47,13 +47,13 @@ class TitanChemicalMGAUDP(mga):
         super().__init__(
             seq=sequence,
             t0=departure_range,
-            tof=3000,
+            tof=2500,
             vinf=4.25,
             tof_encoding='eta',
             multi_objective=False,
-            orbit_insertion=False,
-            e_target=.9823,
-            rp_target=78232 * 1e3,
+            orbit_insertion=True,
+            e_target=.99,
+            rp_target=101906881,
             max_revs= 3,
         )
 

@@ -5,7 +5,7 @@ from pykep.core import epoch, DAY2YEAR
 #from udps.chemical_propulsion2 import TitanChemicalUDP
 from udps.chemical_mga import TitanChemicalMGAUDP
 #from examples_tests.algorithms import Algorithms
-from udps.planetary_system import PlanetToSatellite
+from udps.planetary_system2 import PlanetToSatellite
 import matplotlib.pyplot as plt
 import matplotlib
 import os.path
@@ -151,11 +151,11 @@ class TrajectorySolver():
         """
         
         if v is None:
-            return self.planetary_problem(starting_time, target_orbit[0], target_orbit[1], starting_planet, target_satellite, 
-                                                tof=[10,100], r_start_max=15, initial_insertion=True, v_inf=[0,0,0], max_revs=5)
+            return self.planetary_problem(starting_time, 0.99, target_orbit[0], target_orbit[1], starting_planet, target_satellite, 
+                                                tof=[10,100], r_start_bounds=[1.3,2], initial_insertion=True, v_inf=[0,0,0], max_revs=5)
         else:
-            return self.planetary_problem(starting_time, target_orbit[0], target_orbit[1], starting_planet, target_satellite, 
-                                                tof=[10,100], r_start_max=15, initial_insertion=True, v_inf=v, max_revs=5)
+            return self.planetary_problem(starting_time, 0.99, target_orbit[0], target_orbit[1], starting_planet, target_satellite, 
+                                                tof=[10,100], r_start_bounds=[1.3,2], initial_insertion=True, v_inf=v, max_revs=5)
 
     def interplanetary_trajectory(self, sequence, departure_range=None):
         """
@@ -225,31 +225,7 @@ class TrajectorySolver():
         self.planetary_udp = planetary_udp
         
         # We solve it!!
-        uda = pg.nlopt('bobyqa')
-        uda.ftol_rel = 1e-12
-        uda = pg.algorithm(uda)
-        #uda.set_verbosity(100)
-        #archi = pg.archipelago(algo=uda, prob=planetary_udp, n=8, pop_size=20)
-
-        #archi.evolve(20)
-        #archi.wait()
-        # uda.evolve()
-        #sols = archi.get_champions_f()
-        # sols = uda.get_champions_f()
-        # sols2 = [item[0] for item in sols]
-        # idx = sols2.index(min(sols2))
-        # DV = sols2[idx]
-        # champion_planetary = archi.get_champions_x()[idx]
-        alg_glob = pg.algorithm(pg.sade())
-        #alg_loc = pg.algorithm(pg.nlopt('bobyqa'))
-
-        pop_num = 20
-
-        pop = pg.population(planetary_udp,pop_num)
-        pop = alg_glob.evolve(pop)
-        #pop = alg_loc.evolve(pop)
-
-
+        pop = planetary_algorithm(planetary_udp)
         champion_planetary = pop.champion_x
         DV = pop.champion_f
         

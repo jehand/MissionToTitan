@@ -190,7 +190,6 @@ if __name__ == "__main__":
         archi.push_back(isl)
 
     archi.set_topology(topo(n_islands=len(isls)))
-    print(archi)
     print("Evolving Archipelago...")
     archi.evolve(3)
     archi.wait()

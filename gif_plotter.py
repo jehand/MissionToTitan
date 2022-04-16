@@ -62,8 +62,14 @@ def plot_sc_and_planets(eph_sc, planets, time, ax = None):
 
 def AnimationFunction(frame, eph_sc, planets, start_time, end_time, n_frames, ax = None):
     del_time = frame * abs(end_time - start_time)/n_frames
+    print("Frame {}".format(frame + 1))
     ax.clear()
-    ax = plot_sc_and_planets(eph_sc, planets, start_time + del_time, ax)
+    ax = plot_sc_and_planets(eph_sc, planets, start_time + del_time, ax)        
+    
+def AnimationFunctionAlgorithmEvolution(frame, udp, champion_history, ax = None):
+    champion = champion_history[frame]
+    ax.clear()
+    ax = udp.plot(champion, ax=ax)
 
 if __name__ == "__main__":
     spice_kernels()
@@ -77,8 +83,20 @@ if __name__ == "__main__":
     end_time = champion_x[0] + sum(champion_x[1:])
     champion_x = times_to_eta(champion_x[0], udp.tof, champion_x[1:])
     eph = udp.get_eph_function(champion_x)
-    # ax = plot_sc_and_planets(eph, sequence, pk.epoch_from_string("1999-JAN-03 00:00:00.000").mjd2000)
-    # plt.show()
+    
+    # glob = pg.de1220(gen=500, ftol=1e-10, xtol=1e-10)
+    # #glob = pg.algorithm(pg.mbh(pg.algorithm(glob), stop=3, perturb=0.25))
+    # #local = pg.compass_search(max_fevals=1000, start_range=1e-2, stop_range=1e-5, reduction_coeff=0.5)
+    # glob.set_verbosity(5)
+
+    # pop_num = 100
+    # pop = pg.population(prob=udp,size=pop_num) 
+    # pop = glob.evolve(pop)
+    # #pop = local.evolve(pop)
+    
+    # uda_extract = glob.extract(pg.de1220)
+    # log_de1220 = uda_extract.get_log()
+    
     plt.style.use('dark_background')
     fig = plt.figure()
     axis = fig.add_subplot(projection='3d')
@@ -92,18 +110,19 @@ if __name__ == "__main__":
     axis.set_zticks([])
     axis.grid(False)
 
-    frames = 193
+    frames = 125
     gif_name = "../cassini_validation.gif"
     
     animation = FuncAnimation(fig, 
                               AnimationFunction, 
                               frames=frames, 
-                              interval=108.8, 
+                              interval=100, 
                               fargs=(eph, sequence, champion_x[0], end_time, frames, axis), 
                               repeat=False
                               )
-    #plt.show()
-    animation.save(gif_name, writer="imagemagick", fps=9.19)
+    plt.show()
+    r_array = []
+    animation.save(gif_name, writer="imagemagick", fps=10)
     
     # video = anim_created.to_html5_video()
     # html = display.HTML(video)

@@ -152,10 +152,10 @@ class TrajectorySolver():
         
         if v is None:
             return self.planetary_problem(starting_time, 0.99, target_orbit[0], target_orbit[1], starting_planet, target_satellite, 
-                                                tof=[10,100], r_start_bounds=[1.3,2], initial_insertion=True, v_inf=[0,0,0], max_revs=5)
+                                                tof=[10,600], r_start_bounds=[1.3,2], initial_insertion=True, v_inf=[0,0,0], max_revs=5)
         else:
             return self.planetary_problem(starting_time, 0.99, target_orbit[0], target_orbit[1], starting_planet, target_satellite, 
-                                                tof=[10,100], r_start_bounds=[1.3,2], initial_insertion=True, v_inf=v, max_revs=5)
+                                                tof=[10,600], r_start_bounds=[1.3,2], initial_insertion=True, v_inf=v, max_revs=5)
 
     def interplanetary_trajectory(self, sequence, departure_range=None):
         """

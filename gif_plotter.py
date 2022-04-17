@@ -60,42 +60,39 @@ def plot_sc_and_planets(eph_sc, planets, time, ax = None):
 
     return ax
 
+def f_log_decor(orig_fitness_function):
+    def new_fitness_function(self, dv):
+        if hasattr(self, "dv_log"):
+            self.dv_log.append(dv)
+        else:
+            self.dv_log = [dv]
+        return orig_fitness_function(self, dv)
+    return new_fitness_function
+
 def AnimationFunction(frame, eph_sc, planets, start_time, end_time, n_frames, ax = None):
-    del_time = frame * abs(end_time - start_time)/n_frames
     print("Frame {}".format(frame + 1))
+    del_time = frame * abs(end_time - start_time)/n_frames
     ax.clear()
     ax = plot_sc_and_planets(eph_sc, planets, start_time + del_time, ax)        
     
 def AnimationFunctionAlgorithmEvolution(frame, udp, champion_history, ax = None):
-    champion = champion_history[frame]
+    print("Frame {}".format(frame + 1))
+    champion = champion_history[0][frame]
+    dv = champion_history[1][frame]
     ax.clear()
     ax = udp.plot(champion, ax=ax)
+    ax.get_legend().remove()
+    ax.set_zticks([])
+    ax.grid(False)
+    ax.text2D(0.15, 0.95, "DV = {0:.4g} km/s".format(dv/1000) + ", Gen = {}".format(frame+1), transform=ax.transAxes, fontsize=14)
+    #ax.text2D(0.75, 0.95, "Gen = {}".format(frame+1), transform=ax.transAxes, fontsize=14)
 
 if __name__ == "__main__":
     spice_kernels()
     venus, earth, mars, jupiter, saturn, titan = load_spice() 
-
     sequence = [earth, venus, venus, earth, jupiter, saturn]
     departure_range=[pk.epoch_from_string("1997-JAN-01 00:00:00.000"), pk.epoch_from_string("1997-DEC-31 00:00:00.000")]    
-    
     udp = TitanChemicalMGAUDP(sequence = sequence, departure_range = departure_range)
-    champion_x = [-775.6898615859894, 186.08657230116904, 400.11310660884567, 54.158500679510375, 506.5463301089962, 1299.7266803872685]
-    end_time = champion_x[0] + sum(champion_x[1:])
-    champion_x = times_to_eta(champion_x[0], udp.tof, champion_x[1:])
-    eph = udp.get_eph_function(champion_x)
-    
-    # glob = pg.de1220(gen=500, ftol=1e-10, xtol=1e-10)
-    # #glob = pg.algorithm(pg.mbh(pg.algorithm(glob), stop=3, perturb=0.25))
-    # #local = pg.compass_search(max_fevals=1000, start_range=1e-2, stop_range=1e-5, reduction_coeff=0.5)
-    # glob.set_verbosity(5)
-
-    # pop_num = 100
-    # pop = pg.population(prob=udp,size=pop_num) 
-    # pop = glob.evolve(pop)
-    # #pop = local.evolve(pop)
-    
-    # uda_extract = glob.extract(pg.de1220)
-    # log_de1220 = uda_extract.get_log()
     
     plt.style.use('dark_background')
     fig = plt.figure()
@@ -109,23 +106,46 @@ if __name__ == "__main__":
     axis.view_init(elev=90, azim=0)
     axis.set_zticks([])
     axis.grid(False)
+    
+    frames = 300
+    gif_name = "../gaco_300.gif"
+    
+    if (False):   
+        champion_x = [-775.6898615859894, 186.08657230116904, 400.11310660884567, 54.158500679510375, 506.5463301089962, 1299.7266803872685]
+        end_time = champion_x[0] + sum(champion_x[1:])
+        champion_x = times_to_eta(champion_x[0], udp.tof, champion_x[1:])
+        eph = udp.get_eph_function(champion_x)
+        udp = pg.problem(pg.decorator_problem(udp, fitness_decorator=f_log_decor))
+        animation = FuncAnimation(fig, 
+                            AnimationFunction, 
+                            frames=frames, 
+                            interval=100, 
+                            fargs=(eph, sequence, champion_x[0], end_time, frames, axis), 
+                            repeat=False
+                            )
+    
+    if (True):
+        glob = pg.algorithm(pg.gaco(gen=1))
+        pop_num = 100
+        pop = pg.population(prob=udp,size=pop_num)
+        gens = frames
+        dvariables = []
+        fitness = []
+        for i in range(gens):
+            pop = glob.evolve(pop)
+            dvariables.append(pop.champion_x)
+            fitness.append(pop.champion_f[0])
 
-    frames = 125
-    gif_name = "../cassini_validation.gif"
+        dvariables = np.array(dvariables)
+        fitness = np.array(fitness)
+        animation = FuncAnimation(fig, 
+                                AnimationFunctionAlgorithmEvolution, 
+                                frames=frames, 
+                                interval=10, 
+                                fargs=(udp, (dvariables, fitness), axis), 
+                                repeat=False
+                                )
     
-    animation = FuncAnimation(fig, 
-                              AnimationFunction, 
-                              frames=frames, 
-                              interval=100, 
-                              fargs=(eph, sequence, champion_x[0], end_time, frames, axis), 
-                              repeat=False
-                              )
-    plt.show()
-    r_array = []
-    animation.save(gif_name, writer="imagemagick", fps=10)
-    
-    # video = anim_created.to_html5_video()
-    # html = display.HTML(video)
-    # display.display(html)
-    # # good practice to close the plt object.
-    # plt.close()
+    #plt.show()
+    # r_array = []
+    animation.save(gif_name, writer="imagemagick", fps=30)

@@ -145,7 +145,7 @@ class PlanetToSatellite:
         DV[-2] = norm([a-b for a,b in zip(v, v_beg_l)])
         
         # Calculating the insertion burns
-        DV[-1] =  norm([a - b for a, b in zip(v_end_l, v_Pf)]) - 1000
+        DV[-1] =  norm([a - b for a, b in zip(v_end_l, v_Pf)])
         self.titan_v_inf = DV[-1]
         
         # In this case we compute the insertion DV as a single pericenter burn

@@ -215,7 +215,7 @@ class TitanChemicalMGAUDP(mga):
             plot_planet(pl, epoch(e), units=units, legend=True,
                         color=(0.7, 0.7, 1), axes=ax)
         for lamb in l:
-            plot_lambert(lamb, N=N, sol=0, units=units, color='k',
+            plot_lambert(lamb, N=N, sol=0, units=units, color='r',
                          legend=False, axes=ax, alpha=0.8)
         return ax
 

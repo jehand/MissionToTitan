@@ -23,6 +23,10 @@ Arrival Phase:
     - e_capture tends to be fixed at 0.99, 0.985 or so
     - r_p is generally varied by the user to ensure passage (assume a value used MSc David Palma of 1.75)
 
+
+Multiple orbits of Saturn
+- We know that we want to optimiz
+
 2) Periapsis raising maneuvre
 - Solve Lambert's problem from the highly elliptical orbit to Saturn
 
@@ -126,7 +130,7 @@ class PlanetToSatellite:
         
         t_per = x[2] * x[1] #total time of flight * ratio until start of lambert, i.e. time till periapsis raising maneuvre
         r_i, v_i = pk.par2ic([a_sc, e_sc, i_sc, W_sc, w_sc, E_sc], target_planet.mu_central_body) # at the start of the orbit
-        
+
         # Adding the v_inf transfer
         if self.initial_insertion:
             v_inf_norm = norm(v_inf)
@@ -203,7 +207,8 @@ class PlanetToSatellite:
             ax = fig.add_subplot(projection='3d')
         else:
             ax=ax
-        
+
+        # Plotting everything else
         pk.orbit_plots.plot_planet(self.target_planet, t0=epoch(self.starting_time.mjd2000+times[1]), axes=ax, color="b", units=self.initial_planet_radius, legend=True)
         pk.orbit_plots.plot_lambert(l, units=self.initial_planet_radius, axes=ax, color="r", N=500, legend=True)
         pk.orbit_plots.plot_kepler(eph[0], eph[1], times[0]*DAY2SEC, mu=self.target_planet.mu_central_body, N=1000, color="k", units=self.initial_planet_radius, axes=ax)

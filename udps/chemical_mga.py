@@ -48,13 +48,13 @@ class TitanChemicalMGAUDP(mga):
             seq=sequence,
             t0=departure_range,
             tof=3650,
-            vinf=5.0,
+            vinf=2.5,
             tof_encoding='eta',
             multi_objective=False,
             orbit_insertion=True,
             e_target=.99,
             rp_target=101906881,
-            max_revs= 3,
+            max_revs=3,
         )
 
         self.sequence = sequence

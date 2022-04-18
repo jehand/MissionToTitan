@@ -37,13 +37,13 @@ def traj_analysis(args):
     
     try:
         champ_inter, champ_plan = trajectory.entire_trajectory(sequence, departure_dates, target_satellite, target_orbit)
-        DV, t_depart, t_arrive, t_phases, tof = trajectory.get_results(champ_inter, champ_plan)
+        DV, t_depart, t_arrive, t_phases, tof, DV_inter = trajectory.get_results(champ_inter, champ_plan)
 
-        data = {"case_no":case+1, "sequence":"".join([planet.name[0] for planet in sequence]), "total_DV":DV, "t_depart":t_depart.mjd2000, 
-                "t_arrive":t_arrive.mjd2000, "tof":tof, "t_phases":t_phases, "champ_inter":list(champ_inter), "champ_plan":list(champ_plan)}
+        data = {"case_no":case+1, "sequence":"".join([planet.name[0] for planet in sequence]), "total_DV":DV, "DV_inter":DV_inter, "DV_plan":DV-DV_inter, "t_depart":t_depart, 
+                "t_arrive":t_arrive, "tof":tof, "t_inter":t_phases[0], "t_plan":t_phases[1], "champ_inter":list(champ_inter), "champ_plan":list(champ_plan)}
     except Exception as e:
-        data = {"case_no":case+1, "sequence":"".join([planet.name[0] for planet in sequence]), "total_DV":"FAILED", "t_depart":None, 
-                "t_arrive":None, "tof":None, "t_phases":None, "champ_inter":None, "champ_plan":None}
+        data = {"case_no":case+1, "sequence":"".join([planet.name[0] for planet in sequence]), "total_DV":"FAILED", "DV_inter":None, "DV_plan":None, "t_depart":None, 
+                "t_arrive":None, "tof":None, "t_inter":None, "t_plan":None, "champ_inter":None, "champ_plan":None}
         
     return data
 
@@ -80,8 +80,8 @@ def main(doe_filename, planet_dic, out_filename, departure_window, target_satell
     os.makedirs(os.path.dirname(out_filename), exist_ok=True)
     
     with open(out_filename, "w", newline="") as csv_f:
-        writer = DictWriter(csv_f, ["case_no","sequence","total_DV","t_depart","t_arrive",
-                                    "tof","t_phases","champ_inter","champ_plan"])
+        writer = DictWriter(csv_f, ["case_no","sequence","total_DV","DV_inter","DV_plan","t_depart","t_arrive",
+                                    "tof","t_inter","t_plan","champ_inter","champ_plan"])
         writer.writeheader()
         csv_f.flush()
         
@@ -207,9 +207,9 @@ if __name__ == "__main__":
     venus, earth, mars, jupiter, saturn, titan = load_spice()
     
     start = dt.now()
-    input_filename = "planet_factorial2.csv"
-    output_filename = "results/AEON_" + dt.date(start).isoformat() + ".csv"
-    planet_dic = {1:earth, 2:venus, 3:mars, 4:jupiter, 5:None}
+    input_filename = "Planetary_factorial2.csv"
+    output_filename = "results/AEON_" + start.strftime("%Y-%m-%d-%H-%M-%S") + ".csv"
+    planet_dic = {1:earth, 2:venus, 3:mars, 5:jupiter, 4:None}
     departure_window = [pk.epoch_from_string("2030-JAN-01 00:00:00.000"), pk.epoch_from_string("2032-DEC-31 00:00:00.000")]
     target = titan
     target_orbit = [titan.radius + 200*1e3, 0]

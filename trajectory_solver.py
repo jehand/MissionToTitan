@@ -267,7 +267,7 @@ class TrajectorySolver():
         tof = sum(T) + champ_planetary[-1]
         t = tof + t_departure
         
-        return DV, epoch(t_departure), epoch(t), [sum(T), champ_planetary[-1]], tof
+        return DV, epoch(t_departure), epoch(t), [sum(T), champ_planetary[-1]], tof, DVlaunch + sum(DVfb)
         
     def pretty(self, champion_interplanetary=None, champion_planetary=None):
         """
@@ -297,7 +297,7 @@ class TrajectorySolver():
             print(f"{bcolors.BOLD}{bcolors.WARNING}=================================={bcolors.ENDC}")
             print(f"{bcolors.BOLD}{bcolors.WARNING}Total mission:{bcolors.ENDC}")
             print(f"{bcolors.BOLD}{bcolors.WARNING}=================================={bcolors.ENDC}")
-            DV, t_departure, t_arrival, _, T = self.get_results(champion_interplanetary, champion_planetary)
+            DV, t_departure, t_arrival, _, T, _ = self.get_results(champion_interplanetary, champion_planetary)
             
             print("Total DV: {0:.4g}".format(DV/1000), "km/s")
             print("Departure Date: {} ({} mjd2000)".format(t_departure, t_departure.mjd2000))

@@ -256,7 +256,7 @@ if __name__ == "__main__":
     alg_loc = pg.nlopt('bobyqa')
     alg_loc = pg.algorithm(alg_loc)
     
-    pop_num = 300
+    pop_num = 1000
     
     pop = pg.population(prob=udp,size=pop_num)
     

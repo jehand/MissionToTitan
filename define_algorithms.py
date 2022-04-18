@@ -166,7 +166,7 @@ def interplanetary_algorithm(udp):
     return archi
 
 def planetary_algorithm(udp):
-    pop_num = 300
+    pop_num = 1000
     pop = pg.population(prob=udp,size=pop_num) 
      
     alg_loc = pg.algorithm(pg.nlopt('bobyqa'))

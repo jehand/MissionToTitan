@@ -60,16 +60,24 @@ def extract_seqs(doe_filename, planet_dic, add_start_end=False, starting=None, e
     rows = []
     with open(doe_filename) as f:
         for row in f.readlines()[1:]: # Ignore the header column
-            rows.append(row.split(",")[0])
+            rows.append(row.split(",")[0].split("\n")[0])
 
     sequences = [] # Can change this to a defined list of size _
+    # nums = []
     for row in rows:
         seq = [planet_dic[int(planet)] for planet in str(row) if planet_dic[int(planet)] != None]
         if add_start_end: # adding the starting element
             seq = [starting] + seq + [ending]
         if seq not in sequences:
+            # nums.append(int(row))
             sequences.append(seq)
     
+    # with open("Planetary_factorial_filtered.csv", "w", newline="") as csv_f:
+    #     writer = DictWriter(csv_f, ["Pattern"])
+    #     writer.writeheader()
+    #     for seq in nums:
+    #         writer.writerow({"Pattern":seq})
+    #         csv_f.flush()
     return sequences
     
 def main(doe_filename, planet_dic, out_filename, departure_window, target_satellite, target_orbit, 
@@ -207,7 +215,7 @@ if __name__ == "__main__":
     venus, earth, mars, jupiter, saturn, titan = load_spice()
     
     start = dt.now()
-    input_filename = "Planetary_factorial2.csv"
+    input_filename = "Planetary_factorial_filtered2.csv"
     output_filename = "results/AEON_" + start.strftime("%Y-%m-%d-%H-%M-%S") + ".csv"
     planet_dic = {1:earth, 2:venus, 3:mars, 5:jupiter, 4:None}
     departure_window = [pk.epoch_from_string("2030-JAN-01 00:00:00.000"), pk.epoch_from_string("2032-DEC-31 00:00:00.000")]

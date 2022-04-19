@@ -215,7 +215,7 @@ if __name__ == "__main__":
     venus, earth, mars, jupiter, saturn, titan = load_spice()
     
     start = dt.now()
-    input_filename = "Fixing_Errors.csv"
+    input_filename = "Planetary_factorial_filtered26.csv"
     output_filename = "results/AEON_" + start.strftime("%Y-%m-%d-%H-%M-%S") + ".csv"
     planet_dic = {1:earth, 2:venus, 3:mars, 5:jupiter, 4:None}
     departure_window = [pk.epoch_from_string("2030-JAN-01 00:00:00.000"), pk.epoch_from_string("2032-DEC-31 00:00:00.000")]

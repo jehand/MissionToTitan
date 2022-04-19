@@ -1,7 +1,7 @@
 import os
 from multiprocessing import Pool, cpu_count, set_start_method
 from csv import DictWriter, DictReader
-from udps.chemical_propulsion_mk import TitanChemicalUDP
+from udps.chemical_mga import TitanChemicalMGAUDP #TitanChemicalUDP
 from udps.planetary_system import PlanetToSatellite
 from trajectory_solver import TrajectorySolver, load_spice, spice_kernels
 from itertools import repeat
@@ -9,21 +9,23 @@ from datetime import datetime as dt
 from display_style import bcolors
 from ast import literal_eval
 import pygmo as pg
+from datetime import datetime as dt
+import numpy as np
 
-global_algo_dic = {"SADE": pg.sade(gen=5000, ftol=1e-10, xtol=1e-10),
-                   "DE": pg.de(),
-                   "GACO": pg.gaco(gen=5000),
+global_algo_dic = {"SADE": pg.sade(gen=500, ftol=1e-10, xtol=1e-10),
+                   "DE": pg.de(gen=500, ftol=1e-10, xtol=1e-10),
+                   "GACO": pg.gaco(gen=500),
                    "DE_1220": pg.de1220(gen=500, ftol=1e-10, xtol=1e-10),
-                   "GWO": pg.gwo(gen=5000),
+                   "GWO": pg.gwo(gen=500),
                    "IHS": pg.ihs(gen=500),
                    "PSO": pg.pso(),
-                   "GPSO": pg.pso_gen(gen=5000),
+                   "GPSO": pg.pso_gen(gen=500),
                    "SEA": pg.sea(),
                    "SGA": pg.sga(),
                    "SA": pg.simulated_annealing(),
                    "ABC": pg.bee_colony(),
                    "CMA-ES": pg.cmaes(),
-                   "xNES": pg.xnes(gen=5000,ftol=1e-10,xtol=1e-10), 
+                   "xNES": pg.xnes(gen=500,ftol=1e-10,xtol=1e-10), 
                    "NSGA2": pg.nsga2(),
                    "MOEA/D": pg.moead(),
                    "MHACO": pg.maco(),
@@ -65,53 +67,83 @@ local_algo_dic = {"COMPASS": pg.compass_search(),
                   "SCIPY-TRUST-KRYLOV": pg.scipy_optimize(method="trust-krylov")
                   }
 
+def _evolve_func(algo, pop): # doctest : +SKIP
+    new_pop = algo.evolve(pop)
+    return algo, new_pop
+class mp_island(pg.mp_island): # doctest : +SKIP
+    def __init__(self):
+        # Init the process pool, if necessary.
+        self._use_pool = True
+        # mp_island.shutdown_pool()
+        mp_island.init_pool()
+        mp_island._pool.apply(spice_kernels)
+
+    def run_evolve(self, algo, pop):
+        with mp_island._pool_lock:
+            res = mp_island._pool.apply_async(_evolve_func, (algo, pop))
+        return res.get()
+
+class topo:
+    def __init__(self, n_islands):
+        self.n_islands = n_islands
+        self.connections = {}
+        self.create_connections(n_islands)
+
+    def get_connections(self, n):
+        return self.connections[n]
+
+    def push_back(self):
+        return
+
+    def get_name(self):
+        return "Rim Topology"
+    
+    def create_connections(self, n_islands):
+        for i in range(n_islands):
+            if i==0:
+                connection = list(range(1, n_islands))
+                self.connections[i] = [connection,np.ones(len(connection))]
+            else:
+                self.connections[i] = [[i-1, i+1, 0], [1,1,1]]
+        return
+
 def analysis(args):
     udp, algos, case = args
     spice_kernels()
     
-    pop_n = 1000
-    pop = pg.population(udp, pop_n)
+    pop_size = 32
     try:
+        start_time = dt.now()
         alg_glob_no_mbh = pg.algorithm(global_algo_dic[algos[0]])
-        alg_glob = pg.algorithm(pg.mbh(algo=alg_glob_no_mbh, stop=3, perturb=.9))
+        alg_glob = pg.algorithm(pg.mbh(algo=alg_glob_no_mbh, stop=3, perturb=.25))
         alg_loc = pg.algorithm(local_algo_dic[algos[1]])
                 
-        pop = alg_glob.evolve(pop)
-        champion_glob = pop.champion_x
-        DV_Glob, _, T_Glob, _, _ = udp._compute_dvs(champion_glob)
-        tof_Glob = sum(T_Glob)
-        DV_Glob = sum(DV_Glob)
-        
-        pop = alg_loc.evolve(pop)
-        champion = pop.champion_x
-        DV, _, T, _, _ = udp._compute_dvs(champion)
-        tof = sum(T)
-        DV = sum(DV)
-        
-        data = {"case_no":case+1,"global_algo":algos[0],"local_algo":algos[1],"DV_Glob":DV_Glob,"tof_Glob":tof_Glob,"DV":DV,"tof":tof,"champion":champion}
+        isls = [pg.island(algo = alg_loc, prob=udp, size=pop_size, udi=mp_island())]
+
+        for _ in range(6):
+            isls.append(pg.island(algo=alg_glob, prob=udp, size=pop_size, udi=mp_island()))
+
+        archi = pg.archipelago()
+        for isl in isls:
+            archi.push_back(isl)
+
+        archi.set_topology(topo(n_islands=len(isls)))
+        #print("Evolving Archipelago...")
+        archi.evolve(3)
+        archi.wait()
+
+        sols = archi.get_champions_f()
+        idx = sols.index(min(sols))
+        champion = archi.get_champions_x()[idx]
+        DV = sols[idx][0]
+        T = udp._compute_dvs(champion)[5]
+        tof = champion[0] + sum(T)
+        time_taken = (dt.now() - start_time).total_seconds()
+
+        data = {"case_no":case+1,"global_algo":algos[0],"local_algo":algos[1],"DV":DV,"tof":tof,"time_taken":time_taken,"champion":champion}
     except Exception as e:
-        data = {"case_no":case+1,"global_algo":algos[0],"local_algo":algos[1],"DV_Glob":"FAILED","tof_Glob":None,"DV":None,"tof":None,"champion":None}
-        
+        data = {"case_no":case+1,"global_algo":algos[0],"local_algo":algos[1],"DV":"FAILED","tof":None,"time_taken":None,"champion":None}
     return data
-    
-def loop_analysis(args):
-    udp, algos, case = args
-    best_data = {"case_no":case+1,"global_algo":algos[0],"local_algo":algos[1],"DV_Glob":"FAILED","tof_Glob":None,"DV":None,"tof":None,"champion":None}
-    
-    DV = 1e10
-    for i in range(5):
-        print(i)
-        data = analysis(args)
-        print(data)
-        if data["DV_Glob"] == "FAILED":
-            continue
-        elif data["DV"] < DV:
-            best_data = data
-            DV = data["DV"]
-        elif data["DV"] == DV:
-            return data
-            
-    return best_data
 
 def algorithm_combinations(global_algos, local_algos):
     all_combinations = []    
@@ -130,7 +162,7 @@ def main(udp, global_algos, local_algos, out_filename):
     
     os.makedirs(os.path.dirname(out_filename), exist_ok=True)
     with open(out_filename, "w", newline="") as csv_f:
-        writer = DictWriter(csv_f, ["case_no","global_algo","local_algo","DV_Glob","tof_Glob","DV","tof","champion"])
+        writer = DictWriter(csv_f, ["case_no","global_algo","local_algo","DV","tof","time_taken","champion"])
         writer.writeheader()
         
         # Get all the sequences
@@ -140,24 +172,17 @@ def main(udp, global_algos, local_algos, out_filename):
 
         # Compile all the cases
         all_cases = list(zip(repeat(udp), algo_combinations, range(cases)))
-        
-        # Set up the multiprocessor and run
-        cores = cpu_count() - 2
-        print(f"{bcolors.BOLD}{bcolors.OKCYAN}Running Full Factorial on {cores} Cores...{bcolors.ENDC}\n")
-        p = Pool(processes=cores)
-        results = p.imap_unordered(loop_analysis, all_cases)
-        p.close()
 
         # Write the result every time one is received
-        for i, result in enumerate(results):
-            if result["DV_Glob"] == "FAILED":
+        for i, case in enumerate(all_cases):
+            result = analysis(case)
+            if result["DV"] == "FAILED":
                 color = bcolors.FAIL
                 success = "FAIL"
-                print("{}{}! for Global {} with Local {} ({:.2f}%){}".format(color, success, result["global_algo"], result["local_algo"], (i+1)*100/cases, bcolors.ENDC))
             else:
                 color = bcolors.OKGREEN
                 success = "SUCCESS"
-                print("{}{}! Got result for Global {} with Local {}, DV = {:.2f}km/s ({:.2f}%){}".format(color, success, result["global_algo"], result["local_algo"], result["DV"]/1000, (i+1)*100/cases, bcolors.ENDC))
+            print("{}{}! Got result #{} ({:.2f}%){}".format(color, success, i+1, (i+1)*100/cases, bcolors.ENDC))
             print(f"\t{bcolors.ITALIC}{bcolors.SUBTITLE}Elapsed time: {dt.now() - start} \n {bcolors.ENDC}")
             writer.writerow(result)
             csv_f.flush()
@@ -167,28 +192,13 @@ if __name__ == "__main__":
     spice_kernels()
     venus, earth, mars, jupiter, saturn, titan = load_spice()
     
-    global_algos = ["DE_1220"]#list(global_algo_dic.keys()) #["SADE", "DE", "GACO"]
-    local_algos = ["COMPASS"]#, "NLOPT-BOBYQA", "NLOPT-PRAXIS", "NLOPT-COBYLA", "NLOPT-SLSQP", "NLOPT-MMA"]
-    output_filename = "results/archi_algorithm_comparison.csv"
+    global_algos = list(global_algo_dic.keys()) #["SADE", "DE", "GACO"]
+    local_algos = ["COMPASS", "NLOPT-BOBYQA", "NLOPT-PRAXIS", "NLOPT-COBYLA", "NLOPT-SLSQP", "NLOPT-MMA"]
+    output_filename = "results/archi_algorithm_comparison3.csv"
     
     # Testing the analysis function
     planetary_sequence = [earth,venus,venus,earth,jupiter,saturn]
-    udp = TitanChemicalUDP(sequence=planetary_sequence, constrained=False)
+    udp = TitanChemicalMGAUDP(sequence=planetary_sequence, constrained=False)
     
     # Run all algos with python multiprocessing
-    #main(udp=udp, global_algos=global_algos, local_algos=local_algos, out_filename=output_filename)
-    
-    ### Testing
-   # algos = pg.algorithm(pg.de1220(gen=1000))
-   # archi = pg.archipelago(n=100, algo=algos, pop_size=1000, prob=udp)
-    
-    global_algos = pg.algorithm(pg.de1220(gen=500))
-    glob = pg.algorithm(pg.mbh(algo=global_algos))
-    l = list()
-    for i in range(30):
-        archi = pg.archipelago(algo=glob,prob=udp,n=8,pop_size=1000)
-        archi.evolve(150)
-        archi.wait()
-        champ = archi.get_champions_f()
-        l.append(min(champ))
-    print(l)
+    main(udp=udp, global_algos=global_algos, local_algos=local_algos, out_filename=output_filename)

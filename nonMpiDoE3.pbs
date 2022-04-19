@@ -1,0 +1,17 @@
+#PBS -N running_doe
+#PBS -A GT-br97
+#PBS -l nodes=1:ppn=6
+#PBS -l pmem=6gb
+#PBS -l walltime=479:00
+#PBS -q embers
+#PBS -j oe
+#PBS -o doe3.out
+#PBS -m abe
+#PBS -M jdastoor3@gatech.edu
+
+cd $PBS_O_WORKDIR
+module load anaconda3/2021.05
+pip install --upgrade pykep
+pip install --upgrade pygmo
+
+python run_doe_mp_islands3.py

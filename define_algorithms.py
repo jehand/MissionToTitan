@@ -159,7 +159,7 @@ def interplanetary_algorithm(udp):
         archi.push_back(isl)
 
     archi.set_topology(topo(n_islands=len(isls)))
-    print("Evolving Archipelago...")
+    #print("Evolving Archipelago...")
     archi.evolve(3)
     archi.wait()
 

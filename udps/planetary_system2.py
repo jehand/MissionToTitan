@@ -241,7 +241,7 @@ if __name__ == "__main__":
                             R_TITAN, R_TITAN)
     titan.name = "TITAN"
     
-    start_time = pk.epoch_from_string("2004-Sep-18 21:55:25.893733")
+    start_time = pk.epoch(15025.422580735245)#pk.epoch_from_string("2004-Sep-18 21:55:25.893733")
     e_start = 0.99
     r_target = titan.radius + 200*1e3
     e_target = 0
@@ -250,24 +250,39 @@ if __name__ == "__main__":
     
     udp = PlanetToSatellite(start_time, e_start, r_target, e_target, saturn, titan, tof, r_start, initial_insertion=True, 
                           v_inf=[-5357.159537158673, -304.39996517106874, 68.41472575919865], max_revs=5)
-    prob = pg.problem(udp)
+    # prob = pg.problem(udp)
     
-    alg_glob = pg.algorithm(pg.mbh(algo=pg.algorithm(pg.de1220(gen=500)),stop=3,perturb=0.25))
-    alg_loc = pg.nlopt('bobyqa')
-    alg_loc = pg.algorithm(alg_loc)
+    # alg_glob = pg.algorithm(pg.mbh(algo=pg.algorithm(pg.de1220(gen=500)),stop=3,perturb=0.25))
+    # alg_loc = pg.nlopt('bobyqa')
+    # alg_loc = pg.algorithm(alg_loc)
     
-    pop_num = 1000
+    # pop_num = 1000
     
-    pop = pg.population(prob=udp,size=pop_num)
+    # pop = pg.population(prob=udp,size=pop_num)
     
     #print('Global opt')
     #pop = alg_glob.evolve(pop)
     
     print('Starting local optimizer')
-    pop = alg_loc.evolve(pop)
+    # pop = alg_loc.evolve(pop)
 
-    champion = pop.champion_x
+    champion = [1.760745896875719, 0.48254282637531026, 404.01154557536205] #pop.champion_x
     
+    #plt.style.use('dark_background')
+    fig = plt.figure()
+    axis = fig.add_subplot(projection='3d')
+    #fig.set_facecolor('black')
+    #axis.set_facecolor('black')
+    axis.w_xaxis.set_pane_color((0.0, 0.0, 0.0, 0.0))
+    axis.w_yaxis.set_pane_color((0.0, 0.0, 0.0, 0.0))
+    axis.w_zaxis.set_pane_color((0.0, 0.0, 0.0, 0.0))
+    
+    axis.view_init(elev=90, azim=0)
+    #axis.set_zticks([])
+    axis.grid(False)
+
     udp.pretty(champion)
-    udp.plot(champion)
+    udp.plot(champion, ax=axis)
+    plt.legend(fontsize=8)
+
     plt.show()

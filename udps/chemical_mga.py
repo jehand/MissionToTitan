@@ -33,7 +33,7 @@ class TitanChemicalMGAUDP(mga):
        5) Remove the time constraint
     """
 
-    def __init__(self, sequence, departure_range=[pk.epoch_from_string("1997-JAN-01 00:00:00.000"), pk.epoch_from_string("1997-DEC-31 00:00:00.000")], constrained=False):
+    def __init__(self, sequence, departure_range=[pk.epoch_from_string("1997-JAN-01 00:00:00.000"), pk.epoch_from_string("1997-DEC-31 00:00:00.000")], tof=3650, tof_encoding="eta", constrained=False):
         """
         The Titan problem of the trajectory gym consists in 48 different instances varying in fly-by sequence and
         the presence of a time constraint.
@@ -47,9 +47,9 @@ class TitanChemicalMGAUDP(mga):
         super().__init__(
             seq=sequence,
             t0=departure_range,
-            tof=3500,
+            tof=tof,
             vinf=4,
-            tof_encoding='eta',
+            tof_encoding=tof_encoding,
             multi_objective=False,
             orbit_insertion=True,
             e_target=.99,
@@ -311,24 +311,25 @@ if __name__ == "__main__":
                              R_SATURN, R_SATURN*1.05)
    
     # Defining the sequence and the problem
-    planetary_sequence = [earth,venus,venus,earth,jupiter,saturn]
-    udp = TitanChemicalMGAUDP(sequence=planetary_sequence, constrained=False)
-    print(udp)
-    # We solve it!!
+    planetary_sequence = [earth,venus,earth,earth,saturn]
+    departure_range = [pk.epoch_from_string("2030-JAN-01 00:00:00.000"), pk.epoch_from_string("2032-DEC-31 00:00:00.000")]
+    udp = TitanChemicalMGAUDP(sequence=planetary_sequence, departure_range = departure_range, constrained=False)
+    # print(udp)
+    # # We solve it!!
 
-    alg_glob = pg.algorithm(pg.mbh(algo=pg.algorithm(pg.gaco(gen=20)),stop=7,perturb=1))
-    alg_loc = pg.nlopt('cobyla')
-    alg_loc = pg.algorithm(alg_loc)
+    # alg_glob = pg.algorithm(pg.mbh(algo=pg.algorithm(pg.gaco(gen=20)),stop=7,perturb=1))
+    # alg_loc = pg.nlopt('cobyla')
+    # alg_loc = pg.algorithm(alg_loc)
     
-    pop_num = 100
+    # pop_num = 100
     
-    pop = pg.population(prob=udp,size=pop_num)    
+    # pop = pg.population(prob=udp,size=pop_num)    
     
-    print('Global opt')
-    pop = alg_glob.evolve(pop)
+    # print('Global opt')
+    # pop = alg_glob.evolve(pop)
     
-    print('starting local optimizer')
-    pop = alg_loc.evolve(pop)
+    # print('starting local optimizer')
+    # pop = alg_loc.evolve(pop)
     
-    champion = pop.champion_x
+    champion = [11376.982292324155, 0.12544638656734067, 0.13719950326921726, 0.4336895276521287, 0.9989999999612518]
     udp.pretty(champion)

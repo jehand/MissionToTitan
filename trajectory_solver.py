@@ -127,7 +127,7 @@ class TrajectorySolver():
         self.interplanetary_problem = interplanetary_udp
         self.planetary_problem = planetary_udp
 
-    def define_interplanetary(self, sequence, departure_range=None):
+    def define_interplanetary(self, sequence, departure_range=None, tof=None, tof_encoding=None):
         """
         This is used to define the interplanetary udp with respect to their sequence
 
@@ -135,7 +135,7 @@ class TrajectorySolver():
             sequence (``array(pykep.planet)``)       : the sequence of planets to visit in the interplanetary phase
             departure_range (``array(pykep.epoch)``) : the range of departure dates as [lower bound, upper bound]
         """
-        return self.interplanetary_problem(sequence, departure_range)
+        return self.interplanetary_problem(sequence, departure_range, tof, tof_encoding)
 
     def define_planetary(self, starting_planet, target_satellite, starting_time, target_orbit, v=None):
         """
@@ -157,7 +157,7 @@ class TrajectorySolver():
             return self.planetary_problem(starting_time, 0.99, target_orbit[0], target_orbit[1], starting_planet, target_satellite, 
                                                 tof=[10,600], r_start_bounds=[1.65,1.85], initial_insertion=True, v_inf=v, max_revs=5)
 
-    def interplanetary_trajectory(self, sequence, departure_range=None):
+    def interplanetary_trajectory(self, sequence, departure_range=None, tof=None, tof_encoding=None):
         """
         This class is used to solve for a single trajectory or to run a DoE on the sequences. 
         
@@ -171,7 +171,7 @@ class TrajectorySolver():
                                                     r_target is in m
         """
         # Define the interplanetary problem
-        interplanetary_udp = self.define_interplanetary(sequence, departure_range)
+        interplanetary_udp = self.define_interplanetary(sequence, departure_range, tof, tof_encoding)
         self.interplanetary_udp = interplanetary_udp
         self.departure_range = departure_range
         self.sequence = sequence
@@ -231,7 +231,7 @@ class TrajectorySolver():
         
         return champion_planetary, DV
     
-    def entire_trajectory(self, sequence, departure_dates, target_satellite, target_orbit):
+    def entire_trajectory(self, sequence, departure_dates, target_satellite, target_orbit, tof, tof_encoding):
         """
         Runs an entire trajectory including an interplanetary and planetary phase
 
@@ -241,7 +241,7 @@ class TrajectorySolver():
             target_satellite (``pykep.planet``): pykep.planet object for the destination satellite, e.g. Titan
             target_orbit (``array(float)``): target orbit at the destiniation as [periapsis radius, eccentricity]
         """
-        champ_inter, _ = self.interplanetary_trajectory(sequence=sequence, departure_range=departure_dates)
+        champ_inter, _ = self.interplanetary_trajectory(sequence=sequence, departure_range=departure_dates, tof=tof, tof_encoding=tof_encoding)
         v_sc, start_time = self.compute_final_vinf(sequence[-1], champ_inter)
         champ_plan, _ = self.planetary_trajectory(sequence[-1], target_satellite, start_time, target_orbit, v_sc)
         
@@ -382,7 +382,7 @@ if __name__ == "__main__":
     
     sequence = [earth, venus, earth, jupiter, saturn]
     target_satellite = titan
-    departure_dates = [pk.epoch_from_string("1997-JAN-01 00:00:00.000"), pk.epoch_from_string("1997-DEC-31 00:00:00.000")]
+    departure_dates = [pk.epoch_from_string("2030-JAN-01 00:00:00.000"), pk.epoch_from_string("2032-DEC-31 00:00:00.000")]
     target_orbit = [titan.radius * 2, 0.1]
     
     #trajectory = TrajectorySolver(TitanChemicalUDP, PlanetToSatellite)
@@ -390,7 +390,12 @@ if __name__ == "__main__":
 
     champ_inter, champ_plan = trajectory.entire_trajectory(sequence=sequence, departure_dates=departure_dates,
                                                            target_satellite=titan,
-                                                           target_orbit=target_orbit)
+                                                           target_orbit=target_orbit, tof=3500, tof_encoding="eta")
     
+    champ_inter = [11376.982292324155, 0.12544638656734067, 0.13719950326921726, 0.4336895276521287, 0.9989999999612518]
+    champ_plan = [1.760745896875719, 0.48254282637531026, 404.01154557536205]
     trajectory.pretty(champ_inter, champ_plan)
-    trajectory.plot(champ_inter, champ_plan)
+
+
+
+    #trajectory.plot(champ_inter, champ_plan)

@@ -165,7 +165,7 @@ if __name__ == "__main__":
     #             max_revs= 3,
     #         )
 
-    udp = TitanChemicalMGAUDP(sequence=planetary_sequence)
+    udp = TitanChemicalMGAUDP(sequence=planetary_sequence, tof=[3000,3000], tof_encoding="alpha")
 
     # Defining the algo
     start_time = dt.now()
@@ -182,7 +182,7 @@ if __name__ == "__main__":
 
     allowed_variants = list(range(1,19))
     for var in variant_adptvs:
-        algorithm = pg.algorithm(pg.de1220(gen=500, variant_adptv=var, ftol=1e-10, xtol=1e-10))
+        algorithm = pg.algorithm(pg.de1220(gen=3, variant_adptv=var, ftol=1e-10, xtol=1e-10))
         isls.append(pg.island(algo=pg.mbh(algo=algorithm, stop=3, perturb=0.25), prob=udp, size=pop_size, udi=mp_island()))
 
     archi = pg.archipelago()

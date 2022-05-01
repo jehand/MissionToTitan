@@ -1,8 +1,8 @@
 # AEON
 This repository contains pykep classes in order to optimize a trajectory to a celestial body and its moon (as long as the ephemeris data exists!).
 
-<img align="left" width="46%" src="results/EVEES.gif">
-<img align="right" width="50%" src="results/de1220_300.gif">
+<img align="left" width="43%" src="results/EVEES.gif">
+<img align="right" width="47%" src="results/de1220_300.gif">
 <br clear="both"/>
 
 ## Installation of Packages

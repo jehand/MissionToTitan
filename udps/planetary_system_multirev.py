@@ -25,7 +25,11 @@ Arrival Phase:
 
 
 Multiple orbits of Saturn
-- We know that we want to optimiz
+- Place another orbit around Saturn
+- From the first elliptical, we lambert burn to periapsis of the other, propagate, and burn at the next periapsis to change the orbit again
+- Getting velocity and radial vector at the new orbit
+    - Optimize for the eccentricity, and the semi-major axis, keep all other orbital elements the same as Titan
+    - 
 
 2) Periapsis raising maneuvre
 - Solve Lambert's problem from the highly elliptical orbit to Saturn
@@ -88,8 +92,8 @@ class PlanetToSatellite:
             raise ValueError("Minimum bound on r is smaller than the planets safe radius")
     
     def get_bounds(self):
-        lb = [self.r_start_bounds[0], 0, self.tof[0]]
-        ub = [self.r_start_bounds[1], 1, self.tof[1]]
+        lb = [self.r_start_bounds[0], 0, self.tof[0], 0, 0, 0]
+        ub = [self.r_start_bounds[1], 1, self.tof[1], 1, 400, 1]
         return (lb, ub)
     
     def planet_orbital_description(self, time):
@@ -116,7 +120,7 @@ class PlanetToSatellite:
         starting_time = self.starting_time
         dt = x[2] * (1-x[1]) # time for lambert leg
         v_inf = self.v_inf # incoming v_inf
-        DV = np.empty(2 + self.initial_insertion)
+        DV = np.empty(4 + self.initial_insertion)
         
         # Find the target planets orbit parameters
         a_P, e_P, i_P, W_P, w_P, E_P = self.planet_orbital_description(starting_time)
@@ -140,16 +144,30 @@ class PlanetToSatellite:
                              target_planet.mu_central_body / r_starting * (1. - e_sc))
             DV[0] = np.abs(DVper - DVper2)
         
-        r,v = propagate_lagrangian(r_i, v_i, t_per*DAY2SEC, target_planet.mu_central_body) # propagating to when lambert starts        
+        r,v = propagate_lagrangian(r_i, v_i, t_per*DAY2SEC, target_planet.mu_central_body) # propagating to when lambert starts
         r_Pf, v_Pf = target_planet.eph(epoch(starting_time.mjd2000 + x[2]))
         l = lambert_problem_multirev(v, lambert_problem(r1=r, r2=r_Pf, tof=dt*DAY2SEC,
                                                                 mu=target_planet.mu_central_body, cw=False, max_revs=self.max_revs))
         v_end_l = l.get_v2()[0]
         v_beg_l = l.get_v1()[0]
         DV[-2] = norm([a-b for a,b in zip(v, v_beg_l)])
+
+        # Adding another Saturn orbit after visiting Titan
+        a_2 = norm(r_Pf)/(1-x[3])
+        r_2, v_2 = pk.par2ic([a_2, x[3], i_sc, W_sc, w_sc, 0], target_planet.mu_central_body) # at the start of the orbit
+        DV[-3] =  norm([a - b for a, b in zip(v_end_l, v_2)])
+        
+        r3,v3 = propagate_lagrangian(r_2, v_2, x[4]*x[5]*DAY2SEC, target_planet.mu_central_body) # propagating to when lambert starts
+        r_Pf2, v_Pf2 = target_planet.eph(epoch(starting_time.mjd2000 + x[2]))
+        l2 = lambert_problem_multirev(v3, lambert_problem(r1=r3, r2=r_Pf2, tof=x[4]*(1-x[5])*DAY2SEC,
+                                                                mu=target_planet.mu_central_body, cw=False, max_revs=self.max_revs))
+
+        v_end_l2 = l2.get_v2()[0]
+        v_beg_l2 = l2.get_v1()[0]
+        DV[-4] = norm([a-b for a,b in zip(v3, v_beg_l2)])
         
         # Calculating the insertion burns
-        DV[-1] =  norm([a - b for a, b in zip(v_end_l, v_Pf)])
+        DV[-1] =  norm([a - b for a, b in zip(v_end_l2, v_Pf2)])
         self.titan_v_inf = DV[-1]
         
         # In this case we compute the insertion DV as a single pericenter burn
@@ -159,7 +177,7 @@ class PlanetToSatellite:
                         target_planet.mu_self * e_target / r_target)
         DV[-1] = np.abs(DVper - DVper2)
                 
-        return DV, [t_per, x[2]], l, [r_i, v_i]
+        return DV, [t_per, x[2]], [l,l2], [r_i, v_i, r_2, v_2]
     
     def fitness(self, x):
         DV, _, _, _ = self.orbit2orbit_lambert(x)
@@ -198,6 +216,11 @@ class PlanetToSatellite:
         print("Planetary Time:", '{0:.4g}'.format(times[1]), "days")
         print("Planetary DV:", '{0:.4g}'.format(sum(DV)/1000), "km/s")
         print("")
+
+        print("Secondary orbit eccentricity:", x[3])
+        print("Secondary orbit total t0f:",x[4])
+        print("Secondary orbit time before lambert:", x[4]*x[5])
+        print("Secondary orbit DV:", (DV[-3] + DV[-4])/1000)
     
     def plot(self, x, ax=None):
         _, times, l, eph = self.orbit2orbit_lambert(x)
@@ -210,8 +233,10 @@ class PlanetToSatellite:
 
         # Plotting everything else
         pk.orbit_plots.plot_planet(self.target_planet, t0=epoch(self.starting_time.mjd2000+times[1]), axes=ax, color="b", units=self.initial_planet_radius, legend=True)
-        pk.orbit_plots.plot_lambert(l, units=self.initial_planet_radius, axes=ax, color="r", N=500, legend=True)
+        pk.orbit_plots.plot_lambert(l[0], units=self.initial_planet_radius, axes=ax, color="r", N=500, legend=True)
+        pk.orbit_plots.plot_lambert(l[1], units=self.initial_planet_radius, axes=ax, color="r", N=500, legend=True)
         pk.orbit_plots.plot_kepler(eph[0], eph[1], times[0]*DAY2SEC, mu=self.target_planet.mu_central_body, N=1000, color="k", units=self.initial_planet_radius, axes=ax)
+        pk.orbit_plots.plot_kepler(eph[2], eph[3], x[4]*x[5]*DAY2SEC, mu=self.target_planet.mu_central_body, N=1000, color="k", units=self.initial_planet_radius, axes=ax)
         ax.scatter(0,0,0, color="k", label=self.starting_planet.name)
         ax.legend()
 
@@ -241,7 +266,7 @@ if __name__ == "__main__":
                             R_TITAN, R_TITAN)
     titan.name = "TITAN"
     
-    start_time = pk.epoch(15025.422580735245)#pk.epoch_from_string("2004-Sep-18 21:55:25.893733")
+    start_time = pk.epoch_from_string("2004-Sep-18 21:55:25.893733")
     e_start = 0.99
     r_target = titan.radius + 200*1e3
     e_target = 0
@@ -250,39 +275,24 @@ if __name__ == "__main__":
     
     udp = PlanetToSatellite(start_time, e_start, r_target, e_target, saturn, titan, tof, r_start, initial_insertion=True, 
                           v_inf=[-5357.159537158673, -304.39996517106874, 68.41472575919865], max_revs=5)
-    # prob = pg.problem(udp)
+    prob = pg.problem(udp)
     
-    # alg_glob = pg.algorithm(pg.mbh(algo=pg.algorithm(pg.de1220(gen=500)),stop=3,perturb=0.25))
-    # alg_loc = pg.nlopt('bobyqa')
-    # alg_loc = pg.algorithm(alg_loc)
+    alg_glob = pg.algorithm(pg.mbh(algo=pg.algorithm(pg.de1220(gen=500)),stop=3,perturb=0.25))
+    alg_loc = pg.nlopt('bobyqa')
+    alg_loc = pg.algorithm(alg_loc)
     
-    # pop_num = 1000
+    pop_num = 300
     
-    # pop = pg.population(prob=udp,size=pop_num)
+    pop = pg.population(prob=udp,size=pop_num)
     
     #print('Global opt')
     #pop = alg_glob.evolve(pop)
     
     print('Starting local optimizer')
-    # pop = alg_loc.evolve(pop)
+    pop = alg_loc.evolve(pop)
 
-    champion = [1.760745896875719, 0.48254282637531026, 404.01154557536205] #pop.champion_x
+    champion = pop.champion_x
     
-    #plt.style.use('dark_background')
-    fig = plt.figure()
-    axis = fig.add_subplot(projection='3d')
-    #fig.set_facecolor('black')
-    #axis.set_facecolor('black')
-    axis.w_xaxis.set_pane_color((0.0, 0.0, 0.0, 0.0))
-    axis.w_yaxis.set_pane_color((0.0, 0.0, 0.0, 0.0))
-    axis.w_zaxis.set_pane_color((0.0, 0.0, 0.0, 0.0))
-    
-    axis.view_init(elev=90, azim=0)
-    #axis.set_zticks([])
-    axis.grid(False)
-
     udp.pretty(champion)
-    udp.plot(champion, ax=axis)
-    plt.legend(fontsize=8)
-
+    udp.plot(champion)
     plt.show()

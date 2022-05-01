@@ -2,10 +2,8 @@ import numpy as np
 import pykep as pk
 import pygmo as pg
 from pykep.core import epoch, DAY2YEAR
-#from udps.chemical_propulsion2 import TitanChemicalUDP
 from udps.chemical_mga import TitanChemicalMGAUDP
-#from examples_tests.algorithms import Algorithms
-from udps.planetary_system2 import PlanetToSatellite
+from udps.planetary_system import PlanetToSatellite
 import matplotlib.pyplot as plt
 import matplotlib
 import os.path
@@ -86,30 +84,23 @@ def load_spice():
     R_TITAN = 2574.7 * 1e3
 
     # Spice has arguments: target, observer, ref_frame, abberations, mu_central_body, mu_self, radius, safe_radius
-    earth = pk.planet.spice('EARTH BARYCENTER', 'SUN', 'ECLIPJ2000', 'NONE', pk.MU_SUN, pk.MU_EARTH,
-                            pk.EARTH_RADIUS, pk.EARTH_RADIUS * 1.1)
+    earth = pk.planet.spice('EARTH BARYCENTER', 'SUN', 'ECLIPJ2000', 'NONE', pk.MU_SUN, pk.MU_EARTH, pk.EARTH_RADIUS, pk.EARTH_RADIUS * 1.1)
     earth.name = "EARTH"
 
-    venus = pk.planet.spice('VENUS BARYCENTER', 'SUN', 'ECLIPJ2000', 'NONE', pk.MU_SUN, MU_VENUS,
-                            R_VENUS, R_VENUS*1.1)
+    venus = pk.planet.spice('VENUS BARYCENTER', 'SUN', 'ECLIPJ2000', 'NONE', pk.MU_SUN, MU_VENUS, R_VENUS, R_VENUS*1.1)
     venus.name = "VENUS"
 
-    mars = pk.planet.spice('MARS BARYCENTER', 'SUN', 'ECLIPJ2000', 'NONE', pk.MU_SUN, MU_MARS,
-                           R_MARS, R_MARS*1.1)
+    mars = pk.planet.spice('MARS BARYCENTER', 'SUN', 'ECLIPJ2000', 'NONE', pk.MU_SUN, MU_MARS, R_MARS, R_MARS*1.1)
     mars.name = "MARS"
 
-    jupiter = pk.planet.spice('JUPITER BARYCENTER', 'SUN', 'ECLIPJ2000', 'NONE', pk.MU_SUN, MU_JUPITER,
-                              R_JUPITER, R_JUPITER*1.1)
+    jupiter = pk.planet.spice('JUPITER BARYCENTER', 'SUN', 'ECLIPJ2000', 'NONE', pk.MU_SUN, MU_JUPITER, R_JUPITER, R_JUPITER*1.1)
     jupiter.name = "JUPITER"
    
-
-    saturn = pk.planet.spice('SATURN BARYCENTER', 'SUN', 'ECLIPJ2000', 'NONE', pk.MU_SUN, MU_SATURN,
-                             R_SATURN, R_SATURN*1.1)
+    saturn = pk.planet.spice('SATURN BARYCENTER', 'SUN', 'ECLIPJ2000', 'NONE', pk.MU_SUN, MU_SATURN, R_SATURN, R_SATURN*1.1)
     saturn.name = "SATURN"
     
     #Defining Titan relative to Saturn instead
-    titan = pk.planet.spice('TITAN', 'SATURN BARYCENTER', 'ECLIPJ2000', 'NONE', MU_SATURN, MU_TITAN,
-                            R_TITAN, R_TITAN)
+    titan = pk.planet.spice('TITAN', 'SATURN BARYCENTER', 'ECLIPJ2000', 'NONE', MU_SATURN, MU_TITAN, R_TITAN, R_TITAN)
     titan.name = "TITAN"
     
     return venus, earth, mars, jupiter, saturn, titan
@@ -134,6 +125,9 @@ class TrajectorySolver():
         Args:
             sequence (``array(pykep.planet)``)       : the sequence of planets to visit in the interplanetary phase
             departure_range (``array(pykep.epoch)``) : the range of departure dates as [lower bound, upper bound]
+            tof                                      : time of flight; datatype depends on the tof_encoding, if eta: float of the maximum time 
+                                                       of flight, alpha: [lb, ub] on tof, direct: [[lb, ub], [lb, ub], ...] defined for each leg
+            tof_encoding (``str``)                   : the way to define the time of flight bounds, either direct, alpha, or eta
         """
         return self.interplanetary_problem(sequence, departure_range, tof, tof_encoding)
 
@@ -169,6 +163,9 @@ class TrajectorySolver():
             departure_range (``array(pykep.epoch)``) : the range of dates for which to begin the interplanetary stage
             target_orbit (``array(double)``)         : the final orbit desired at the satellite given as [r_target, e_target] where 
                                                     r_target is in m
+            tof                                      : time of flight; datatype depends on the tof_encoding, if eta: float of the maximum time 
+                                                       of flight, alpha: [lb, ub] on tof, direct: [[lb, ub], [lb, ub], ...] defined for each leg
+            tof_encoding (``str``)                   : the way to define the time of flight bounds, either direct, alpha, or eta
         """
         # Define the interplanetary problem
         interplanetary_udp = self.define_interplanetary(sequence, departure_range, tof, tof_encoding)
@@ -231,7 +228,7 @@ class TrajectorySolver():
         
         return champion_planetary, DV
     
-    def entire_trajectory(self, sequence, departure_dates, target_satellite, target_orbit, tof, tof_encoding):
+    def entire_trajectory(self, sequence, departure_dates, target_satellite, target_orbit, tof=3650, tof_encoding="eta"):
         """
         Runs an entire trajectory including an interplanetary and planetary phase
 
@@ -240,6 +237,9 @@ class TrajectorySolver():
             departure_dates (``array(pykep.epoch)``): the range of dates within which to launch [lower bound, upper bound]
             target_satellite (``pykep.planet``): pykep.planet object for the destination satellite, e.g. Titan
             target_orbit (``array(float)``): target orbit at the destiniation as [periapsis radius, eccentricity]
+            tof: time of flight; datatype depends on the tof_encoding, if eta: float of the maximum time of flight, alpha: [lb, ub] on tof, 
+                 direct: [[lb, ub], [lb, ub], ...] defined for each leg
+            tof_encoding (``str``): the way to define the time of flight bounds, either direct, alpha, or eta
         """
         champ_inter, _ = self.interplanetary_trajectory(sequence=sequence, departure_range=departure_dates, tof=tof, tof_encoding=tof_encoding)
         v_sc, start_time = self.compute_final_vinf(sequence[-1], champ_inter)
@@ -395,7 +395,4 @@ if __name__ == "__main__":
     champ_inter = [11376.982292324155, 0.12544638656734067, 0.13719950326921726, 0.4336895276521287, 0.9989999999612518]
     champ_plan = [1.760745896875719, 0.48254282637531026, 404.01154557536205]
     trajectory.pretty(champ_inter, champ_plan)
-
-
-
     #trajectory.plot(champ_inter, champ_plan)

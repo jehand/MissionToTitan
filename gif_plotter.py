@@ -1,4 +1,3 @@
-from udps.chemical_propulsion_mk import TitanChemicalUDP
 from udps.chemical_mga import TitanChemicalMGAUDP
 from udps.planetary_system import PlanetToSatellite
 from trajectory_solver import TrajectorySolver, load_spice, spice_kernels

@@ -3,6 +3,8 @@ Porkchop Plotter
 AEON Grand Challenge
 Spring 2022
 Sarah Hopkins
+
+(Based off of code written by Stephanie Zhu)
 """
 
 # General Imports
@@ -18,11 +20,10 @@ import matplotlib.pyplot as plt
 
 import os
 from multiprocessing import Pool, cpu_count, set_start_method
-from csv import DictWriter, DictReader
+from csv import DictWriter
 from udps.chemical_mga import TitanChemicalMGAUDP
-from udps.planetary_system2 import PlanetToSatellite
+from udps.planetary_system import PlanetToSatellite
 from trajectory_solver import TrajectorySolver, load_spice, spice_kernels
-from itertools import repeat
 from datetime import datetime as dt
 from display_style import bcolors
 from ast import literal_eval
@@ -45,13 +46,10 @@ trajectory = TrajectorySolver(interplanetary_udp, planetary_udp)
 Porkchop Plotter Function
 #######################################################################################################################
 '''
-def porkchop_plotter(traj_solver, T0, planet_sequence, Vinf_dep, e_target, tof_bounds, n, t_step, out_filename):
+def porkchop_plotter(traj_solver, T0, planet_sequence, n, t_step, out_filename):
     # traj_solver:      the trajectory solver function        
     # T0:               launch date
     # planet_sequence:  sequence of planets for fly-bys
-    # Vinf_dep:         dv leaving initial planet (km/s)
-    # e_target:         insertion orbit eccentricity
-    # tof_bounds:       window for entire trajectory - days
     # n:                number of iterations
     # t_step:           time step (days)
 
@@ -113,12 +111,8 @@ if __name__ == "__main__":
         spice_kernels()
         venus, earth, mars, jupiter, saturn, titan = load_spice()
 
-        T0 = pk.epoch_from_string("2031-Aug-23 23:34:30.056807")           # Launch date
-        planet_sequence = [earth, venus, earth, earth, saturn]   # Start at Earth, end at Saturn
-        Vinf_dep = 4.                 # km/s, dv leaving initial planet
-        e_target = 0.75               # orbit insertion eccentricity, ND
-        T0_u = 0                      # upper bound on departure time
-        tof_bounds = [50, 6000]       # window for entire trajectory - days
+        T0 = pk.epoch_from_string("2032-Dec-30 23:59:01.542724")           # Launch date
+        planet_sequence = [earth, venus, earth, earth, jupiter, saturn]   # Start at Earth, end at Saturn
         n = 30                        # number of iterations
         t_step = 6.0                 # time step - days
         sequence_string = "".join([planet.name[0] for planet in planet_sequence])
@@ -129,9 +123,9 @@ if __name__ == "__main__":
         # put the call to the function in a loop so we create multiple porkchop plots at once
         # for i in porkchop_plotter:
 
-        porkchop_plotter(trajectory, T0, planet_sequence, Vinf_dep, e_target, tof_bounds, n, t_step, csv_filename)
+        porkchop_plotter(trajectory, T0, planet_sequence, n, t_step, csv_filename)
 
-    if (False): # Set this to true if you are seeking to plot data for a porkchop plot from a .csv
+    if (False): # Set this to true if you are seeking to plot data for a porkchop plot from a .csv, STILL DOES NOT WORK
         results_filename = "results/porkchop_EVEEJS.csv"
         dt_departure = []
         dt_arrival = []

@@ -1,7 +1,7 @@
 import os
 from multiprocessing import Pool, cpu_count, set_start_method
 from csv import DictWriter, DictReader
-from udps.chemical_propulsion_mk import TitanChemicalUDP
+from udps.chemical_mga import TitanChemicalMGAUDP
 from udps.planetary_system import PlanetToSatellite
 from trajectory_solver import TrajectorySolver, load_spice, spice_kernels
 from itertools import repeat
@@ -173,7 +173,7 @@ if __name__ == "__main__":
     
     # Testing the analysis function
     planetary_sequence = [earth,venus,venus,earth,jupiter,saturn]
-    udp = TitanChemicalUDP(sequence=planetary_sequence, constrained=False)
+    udp = TitanChemicalMGAUDP(sequence=planetary_sequence, constrained=False)
     
     # Run all algos with python multiprocessing
     main(udp=udp, global_algos=global_algos, local_algos=local_algos, out_filename=output_filename)

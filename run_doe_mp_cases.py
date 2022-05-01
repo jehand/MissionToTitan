@@ -1,7 +1,7 @@
 import os
 from multiprocessing import Pool, cpu_count, set_start_method
 from csv import DictWriter, DictReader
-from udps.chemical_propulsion2 import TitanChemicalUDP
+from udps.chemical_mga import TitanChemicalMGAUDP
 from udps.planetary_system import PlanetToSatellite
 from trajectory_solver import TrajectorySolver, load_spice, spice_kernels
 from itertools import repeat
@@ -11,7 +11,7 @@ from ast import literal_eval
 import pykep as pk
 
 # Instantiate the class once from the start and don't do it again
-interplanetary_udp = TitanChemicalUDP
+interplanetary_udp = TitanChemicalMGAUDP
 planetary_udp = PlanetToSatellite
 trajectory = TrajectorySolver(interplanetary_udp, planetary_udp)
 
@@ -32,21 +32,11 @@ def traj_analysis(args):
         data = {"case_no":case+1, "sequence":"".join([planet.name[0] for planet in sequence]), "total_DV":DV, "t_depart":t_depart.mjd2000, 
                 "t_arrive":t_arrive.mjd2000, "tof":tof, "t_phases":t_phases, "champ_inter":list(champ_inter), "champ_plan":list(champ_plan)}
     except Exception as e:
+        print("Exception:", e)
         data = {"case_no":case+1, "sequence":"".join([planet.name[0] for planet in sequence]), "total_DV":"FAILED", "t_depart":None, 
                 "t_arrive":None, "tof":None, "t_phases":None, "champ_inter":None, "champ_plan":None}
         
     return data
-
-# def load_interp(filepath):
-#     """
-#     Loads an interpolated planet object
-
-#     Args:
-#         filepath (``string``): the path to the planet object
-#     """
-#     with open(filepath, "rb") as inp:
-#             planet_new = pickle.load(inp)
-#     return planet_new
 
 def extract_seqs(doe_filename, planet_dic, add_start_end=False, starting=None, ending=None):
     """
@@ -215,5 +205,3 @@ if __name__ == "__main__":
     
     # pretty_doe_result(output_filename, "EEEEEEVS", [venus, earth, mars, jupiter, saturn], target, target_orbit)
     # plot_doe_result(output_filename, "EEEEEEVS", [venus, earth, mars, jupiter, saturn], target, target_orbit)
-
-    ### ALSO NEED TO ADD THE ABILITY TO RE-RUN A CASE X TIMES TO CONFIRM THAT IT IS THE OPTIMAL RESULT

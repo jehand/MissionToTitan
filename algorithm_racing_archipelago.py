@@ -1,7 +1,7 @@
 import os
 from multiprocessing import Pool, cpu_count, set_start_method
 from csv import DictWriter, DictReader
-from udps.chemical_mga import TitanChemicalMGAUDP #TitanChemicalUDP
+from udps.chemical_mga import TitanChemicalMGAUDP
 from udps.planetary_system import PlanetToSatellite
 from trajectory_solver import TrajectorySolver, load_spice, spice_kernels
 from itertools import repeat

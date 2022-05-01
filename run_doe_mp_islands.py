@@ -2,7 +2,7 @@ import os
 from multiprocessing import Pool, cpu_count, set_start_method
 from csv import DictWriter, DictReader
 from udps.chemical_mga import TitanChemicalMGAUDP
-from udps.planetary_system2 import PlanetToSatellite
+from udps.planetary_system import PlanetToSatellite
 from trajectory_solver import TrajectorySolver, load_spice, spice_kernels
 from itertools import repeat
 from datetime import datetime as dt
@@ -10,21 +10,11 @@ from display_style import bcolors
 from ast import literal_eval
 import pykep as pk
 from pykep.planet import jpl_lp
-#from mpi4py import MPI
 
 # Instantiate the class once from the start and don't do it again
 interplanetary_udp = TitanChemicalMGAUDP
 planetary_udp = PlanetToSatellite
 trajectory = TrajectorySolver(interplanetary_udp, planetary_udp)
-
-# Instantiate MPI
-# comm = MPI.COMM_WORLD
-# rank = comm.Get_rank()
-# nprocs = comm.Get_size()
-
-def split(a, n):
-    k, m = divmod(len(a), n)
-    return (a[i*k+min(i, m):(i+1)*k+min(i+1, m)] for i in range(n))
 
 def traj_analysis(args):
     """
@@ -42,6 +32,7 @@ def traj_analysis(args):
         data = {"case_no":case+1, "sequence":"".join([planet.name[0] for planet in sequence]), "total_DV":DV, "DV_inter":DV_inter, "DV_plan":DV-DV_inter, "t_depart":t_depart, 
                 "t_arrive":t_arrive, "tof":tof, "t_inter":t_phases[0], "t_plan":t_phases[1], "champ_inter":list(champ_inter), "champ_plan":list(champ_plan)}
     except Exception as e:
+        print("Exception:", e)
         data = {"case_no":case+1, "sequence":"".join([planet.name[0] for planet in sequence]), "total_DV":"FAILED", "DV_inter":None, "DV_plan":None, "t_depart":None, 
                 "t_arrive":None, "tof":None, "t_inter":None, "t_plan":None, "champ_inter":None, "champ_plan":None}
         
@@ -62,8 +53,7 @@ def extract_seqs(doe_filename, planet_dic, add_start_end=False, starting=None, e
         for row in f.readlines()[1:]: # Ignore the header column
             rows.append(row.split(",")[0].split("\n")[0])
 
-    sequences = [] # Can change this to a defined list of size _
-    # nums = []
+    sequences = []
     for row in rows:
         seq = [planet_dic[int(planet)] for planet in str(row) if planet_dic[int(planet)] != None]
         if add_start_end: # adding the starting element
@@ -71,13 +61,6 @@ def extract_seqs(doe_filename, planet_dic, add_start_end=False, starting=None, e
         if seq not in sequences:
             # nums.append(int(row))
             sequences.append(seq)
-    
-    # with open("Planetary_factorial_filtered.csv", "w", newline="") as csv_f:
-    #     writer = DictWriter(csv_f, ["Pattern"])
-    #     writer.writeheader()
-    #     for seq in nums:
-    #         writer.writerow({"Pattern":seq})
-    #         csv_f.flush()
     return sequences
     
 def main(doe_filename, planet_dic, out_filename, departure_window, target_satellite, target_orbit, 
@@ -102,10 +85,6 @@ def main(doe_filename, planet_dic, out_filename, departure_window, target_satell
         all_cases = list(zip(sequences, repeat(departure_window), repeat(target_satellite), 
                              repeat(target_orbit), range(cases)))
         
-        # Set up MPI and run
-        #all_cases = list(split(all_cases, nprocs))
-        #all_cases = comm.scatter(all_cases, root=0)
-        #print('Process {} has data:'.format(rank), all_cases)
         print(f"{bcolors.BOLD}{bcolors.OKCYAN}Running DoE ...{bcolors.ENDC}\n")
 
         # Write the result every time one is received
@@ -215,7 +194,7 @@ if __name__ == "__main__":
     venus, earth, mars, jupiter, saturn, titan = load_spice()
     
     start = dt.now()
-    input_filename = "Fixing_Errors.csv"
+    input_filename = "Planetary_factorial_filtered_full.csv"
     output_filename = "results/AEON_" + start.strftime("%Y-%m-%d-%H-%M-%S") + ".csv"
     planet_dic = {1:earth, 2:venus, 3:mars, 5:jupiter, 4:None}
     departure_window = [pk.epoch_from_string("2030-JAN-01 00:00:00.000"), pk.epoch_from_string("2032-DEC-31 00:00:00.000")]
@@ -227,5 +206,3 @@ if __name__ == "__main__":
     
     # pretty_doe_result(output_filename, "EEEEEEVS", [venus, earth, mars, jupiter, saturn], target, target_orbit)
     # plot_doe_result(output_filename, "EEEEEEVS", [venus, earth, mars, jupiter, saturn], target, target_orbit)
-
-    ### ALSO NEED TO ADD THE ABILITY TO RE-RUN A CASE X TIMES TO CONFIRM THAT IT IS THE OPTIMAL RESULT

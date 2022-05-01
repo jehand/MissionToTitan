@@ -2,4 +2,4 @@
 .ipynb_checkpoints/
 .vs/
 __pycache__/
-.idea/
+.idea

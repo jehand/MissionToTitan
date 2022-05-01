@@ -1,5 +1,5 @@
-# MissionToTitan
-This repository contains pykep classes in order to optimize a trajectory to Titan.
+# AEON
+This repository contains pykep classes in order to optimize a trajectory to a celestial body and its moon (as long as the ephemeris data exists!).
 
 ## Installation of Packages
 You will need to have a working version of pykep in order to run the scripts in this repository. Pykep is available via [pip](https://pip.pypa.io/en/stable/):
